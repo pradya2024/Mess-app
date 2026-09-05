@@ -36,31 +36,20 @@ st.markdown("""
 </style>
 """, unsafe_allowed_html=True)
 
-# --- LOGIN CREDENTIALS (UPDATED WITH NEW MESS NAMES) ---
-# Username hamesha chote aksharon (lowercase) mein login hoga
+# --- LOGIN CREDENTIALS ---
 USER_CREDENTIALS = {
-    "admin": "admin123",       # Aapka (Owner) Login
-    "hq": "hq123",             # HQ Mess
-    "rtt": "rtt123",           # RTT Mess
-    "ffc": "ffc123",           # FFC Mess
-    "fc": "fc123",             # FC Mess
-    "so_s": "so123",           # SO'S Mess
-    "go_s": "go123",           # GO'S Mess
-    "veg_shop": "veg123"       # VEG SHOP
+    "admin": "admin123",
+    "hq": "hq123", "rtt": "rtt123", "ffc": "ffc123", 
+    "fc": "fc123", "so_s": "so123", "go_s": "go123", "veg_shop": "veg123"
 }
 
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'username' not in st.session_state: st.session_state.username = ""
 
-# Sabji aur Fruits ke rate (Aap badal sakte hain)
 rates = {"Aloo (Potato)": 30, "Tamatar (Tomato)": 40, "Pyaj (Onion)": 35, "Kela (Banana)": 50, "Seb (Apple)": 120}
 
-# App Main Header
 st.markdown('<div class="android-header"><h1>📱 Mess Supply Pro</h1><p>Secure Demand & Billing</p></div>', unsafe_allowed_html=True)
 
-# ==========================================
-# 🔐 SCREEN 1: LOGIN SYSTEM
-# ==========================================
 if not st.session_state.logged_in:
     st.subheader("🔒 Login Karein")
     with st.container():
@@ -77,12 +66,7 @@ if not st.session_state.logged_in:
                 st.rerun()
             else:
                 st.error("❌ Galat Username ya Password!")
-
-# ==========================================
-# 🔓 SCREEN 2: MAIN APP
-# ==========================================
 else:
-    # Username ko unke sahi naam mein badalne ke liye mapping
     name_mapping = {
         "hq": "HQ", "rtt": "RTT", "ffc": "FFC", "fc": "FC", 
         "so_s": "SO'S", "go_s": "GO'S", "veg_shop": "VEG SHOP"
@@ -96,16 +80,14 @@ else:
         st.session_state.username = ""
         st.rerun()
 
-    # Google Sheet se data read karna
     try:
         existing_data = conn.read(ttl="5s")
         df = pd.DataFrame(existing_data)
     except:
         df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
 
-    # ---- 🟢 MESS MANAGER LOGGED IN ----
     if st.session_state.username != "admin":
-        st.subheader(f"📋 New Demand Form")
+        st.subheader("📋 New Demand Form")
         current_mess = name_mapping[st.session_state.username]
         
         with st.form("demand_form", clear_on_submit=True):
@@ -129,9 +111,7 @@ else:
                 
                 updated_df = pd.concat([df, new_row], ignore_index=True)
                 conn.update(data=updated_df)
-                st.success(f"✅ Success: Data Google Sheet mein save ho gaya!")
-
-    # ---- 📊 ADMIN (OWNER) LOGGED IN ----
+                st.success("✅ Success: Data Google Sheet mein save ho gaya!")
     else:
         tab1, tab2 = st.tabs(["🛒 Mandi Packing List", "💰 Mess Wise Bills"])
         
