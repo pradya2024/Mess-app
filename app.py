@@ -59,11 +59,9 @@ else:
         st.rerun()
 
     try:
-        # Sheet ka pehla tab read karne ke liye worksheet specify ki hai
+        # Sheet data load karna (cache clear rakhne ke liye ttl=0)
         existing_data = conn.read(worksheet="Sheet1", ttl="0s")
-        df = pd.DataFrame(existing_data)
-        # Drop completely empty rows if any
-        df = df.dropna(how='all')
+        df = pd.DataFrame(existing_data).dropna(how='all')
     except:
         df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
 
@@ -91,12 +89,13 @@ else:
                     "Total": total
                 }])
                 
+                # Naya data jodh kar update karna
                 updated_df = pd.concat([df, new_row], ignore_index=True)
                 
-                # Sahi tarike se worksheet name ke sath data update karne ke liye fix
-                conn.update(worksheet="Sheet1", data=updated_df)
+                # conn.create data overwriting aur fresh insertion dono ke liye perfect kaam karta hai
+                conn.create(worksheet="Sheet1", data=updated_df)
                 st.success("✅ Success: Data Google Sheet mein save ho gaya!")
-                st.balloons() # Ek sundar balloon animation aayega success par
+                st.balloons()
                 
     # ---- 📊 ADMIN (OWNER) LOGGED IN ----
     else:
