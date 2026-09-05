@@ -59,8 +59,11 @@ else:
         st.rerun()
 
     try:
-        existing_data = conn.read(ttl="5s")
+        # Sheet ka pehla tab read karne ke liye worksheet specify ki hai
+        existing_data = conn.read(worksheet="Sheet1", ttl="0s")
         df = pd.DataFrame(existing_data)
+        # Drop completely empty rows if any
+        df = df.dropna(how='all')
     except:
         df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
 
@@ -89,14 +92,17 @@ else:
                 }])
                 
                 updated_df = pd.concat([df, new_row], ignore_index=True)
-                conn.update(data=updated_df)
+                
+                # Sahi tarike se worksheet name ke sath data update karne ke liye fix
+                conn.update(worksheet="Sheet1", data=updated_df)
                 st.success("✅ Success: Data Google Sheet mein save ho gaya!")
+                st.balloons() # Ek sundar balloon animation aayega success par
                 
     # ---- 📊 ADMIN (OWNER) LOGGED IN ----
     else:
         tab1, tab2 = st.tabs(["🛒 Mandi Packing List", "💰 Mess Wise Bills"])
         
-        if df.empty:
+        if df.empty or len(df) == 0:
             st.info("Abhi tak kisi bhi mess ne demand nahi bheji hai.")
         else:
             with tab1:
