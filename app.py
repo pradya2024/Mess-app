@@ -8,6 +8,7 @@ import json
 st.set_page_config(page_title="ANNAPURNA VEGETABLE SHOP", page_icon="🥦", layout="centered")
 
 # --- CUSTOM CSS FOR SHOP BRANDING ---
+# 🚩 FIX: unsafe_allow_html (without 'ed') use kiya hai yahan
 st.markdown("""
 <style>
     .stApp { background-color: #F7F9FC; }
@@ -20,13 +21,13 @@ st.markdown("""
     .shop-header h1 { color: white !important; font-size: 28px !important; font-weight: bold !important; margin: 0; }
     .shop-header p { color: #FFF3E0 !important; font-size: 16px !important; margin: 5px 0 0 0; }
 </style>
-""", unsafe_allowed_html=True)
+""", unsafe_allow_html=True)
 
 # 🟢 APNI GOOGLE WEB APP KI LINK (Aapki purani working link)
 SCRIPT_URL = "https://google.com"
 
 # Shop Main Banner on Top
-st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allowed_html=True)
+st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allow_html=True)
 
 # --- LOGIN CREDENTIALS ---
 USER_CREDENTIALS = {
