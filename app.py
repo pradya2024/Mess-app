@@ -213,6 +213,6 @@ else:
                     
                     # Streamlit Download Button (FIXED CLOSING BRACKET)
                     st.download_button(
-                        label=f"📥 Download {selected_mess} Official Bill",
+                        label=f"📥) Download {selected_mess} Official Bill",
                         data=download_text.encode('utf-8'),
                         file_name=f"Annapurna_Bill_{selected_mess}_{bill_date}.txt",
