@@ -5,13 +5,28 @@ import requests
 import json
 
 # Page Configuration
-st.set_page_config(page_title="Mess Supply Pro", page_icon="🥦", layout="centered")
+st.set_page_config(page_title="ANNAPURNA VEGETABLE SHOP", page_icon="🥦", layout="centered")
 
-# 🟢 APNI GOOGLE WEB APP KI LAMBI LINK YAHAN DAALEIN
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxbbUBdxj__qToZfF33nT2E3E464K9i3v6S9vDSaxLx4ll8nwNrY8gDaDQqN2sfJbQ2/exec"
+# --- CUSTOM CSS FOR SHOP BRANDING ---
+st.markdown("""
+<style>
+    .stApp { background-color: #F7F9FC; }
+    .shop-header {
+        background: linear-gradient(135deg, #FF9800, #F57C00);
+        color: white; padding: 25px; border-radius: 15px;
+        text-align: center; margin-bottom: 25px;
+        box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
+    }
+    .shop-header h1 { color: white !important; font-size: 28px !important; font-weight: bold !important; margin: 0; }
+    .shop-header p { color: #FFF3E0 !important; font-size: 16px !important; margin: 5px 0 0 0; }
+</style>
+""", unsafe_allowed_html=True)
 
-st.title("📱 Mess Supply Pro")
-st.write("Master Demand & Mandi Billing System")
+# 🟢 APNI GOOGLE WEB APP KI LAMBI LINK (Wahi purani link)
+SCRIPT_URL = "https://google.com"
+
+# Shop Main Banner on Top
+st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allowed_html=True)
 
 # --- LOGIN CREDENTIALS ---
 USER_CREDENTIALS = {
@@ -24,7 +39,7 @@ if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'username' not in st.session_state: st.session_state.username = ""
 if 'mandi_rates' not in st.session_state: st.session_state.mandi_rates = {}
 
-# Google Script API se live database load karna (Demands aur Sabji List dono)
+# Google Script API se live database load karna
 try:
     response = requests.get(SCRIPT_URL)
     api_data = response.json()
@@ -110,7 +125,7 @@ else:
                 
     # ---- 📊 ADMIN (OWNER) LOGGED IN ----
     else:
-        tab1, tab2, tab3, tab4 = st.tabs(["🛒 Mandi Packing List", "➕ Add New Sabji/Fruit", "💰 Today's Mandi Rates", "💵 Final Mess Bills"])
+        tab1, tab2, tab3, tab4 = st.tabs(["🛒 Mandi Packing List", "➕ Add New Sabji/Fruit", "💰 Today's Mandi Rates", "💵 Alag-Alag Mess Bills"])
         
         # TAB 1: Packing List
         with tab1:
@@ -126,7 +141,7 @@ else:
         with tab2:
             st.subheader("➕ Nayi Sabji ya Fruit Ka Name Jodein")
             with st.form("add_item_form", clear_on_submit=True):
-                new_item_name = st.text_input("Nayi Sabji/Fruit Ka Naam Likhein (e.g., Bhindi, Gobhi, Seb):").strip()
+                new_item_name = st.text_input("Nayi Sabji/Fruit Ka Naam Likhein:").strip()
                 add_submit = st.form_submit_button("Add Item to List 📝")
                 if add_submit and new_item_name:
                     if new_item_name in available_items:
@@ -136,7 +151,7 @@ else:
                         try:
                             res = requests.post(SCRIPT_URL, data=json.dumps(payload))
                             if res.status_code == 200:
-                                st.success(f"🎉 '{new_item_name}' ko list mein jod diya gaya hai! Ab managers ko ye option dikhega.")
+                                st.success(f"🎉 '{new_item_name}' ko list mein jod diya gaya hai!")
                                 st.rerun()
                         except:
                             st.error("❌ Add karne mein dikkat aayi.")
@@ -153,19 +168,51 @@ else:
                     st.session_state.mandi_rates = updated_rates
                     st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
 
-        # TAB 4: Final Split Billing
+        # TAB 4: Final Split Billing with Download Option
         with tab4:
-            st.subheader("💵 Mandi Rates Ke Hisab Se Final Bills")
+            st.subheader("💵 Alag-Alag Mess Wise Final Bills")
             if df.empty or len(df) == 0:
                 st.info("No data available.")
             else:
                 calc_df = df.copy()
                 calc_df["Qty"] = pd.to_numeric(calc_df["Qty"], errors='coerce').fillna(0)
-                calc_df["Rate"] = calc_df["Item"].map(st.session_state.mandi_rates)
+                calc_df["Rate"] = calc_df["Item"].map(st.session_state.mandi_rates).fillna(0)
                 calc_df["Total"] = calc_df["Qty"] * calc_df["Rate"]
                 
-                billing_list = calc_df.groupby("Mess")["Total"].sum().reset_index()
-                st.dataframe(billing_list)
+                # --- SUMMARY OVERVIEW ---
+                st.write("📊 **Sabhi Mess Ka Total Kharcha:**")
+                summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
+                summary_df.columns = ["Mess Name", "Total Bill (₹)"]
+                st.dataframe(summary_df)
                 
-                if st.checkbox("Show Detailed Ledger"):
-                    st.dataframe(calc_df)
+                st.markdown("---")
+                
+                # --- SEPARATE MESS FILTER & DOWNLOAD ---
+                st.write("🔍 **Kisi Ek Mess Ka Detail Bill Dekhein aur Download Karein:**")
+                all_messes = ["HQ", "RTT", "FFC", "FC", "SO'S", "GO'S", "VEG SHOP"]
+                selected_mess = st.selectbox("Mess Chunein jiska bill nikalna hai:", all_messes)
+                
+                mess_bill_df = calc_df[calc_df["Mess"] == selected_mess][["Date", "Item", "Qty", "Rate", "Total"]]
+                
+                if mess_bill_df.empty:
+                    st.warning(f"⚠️ {selected_mess} ne aaj koi demand entry nahi ki hai.")
+                else:
+                    st.write(f"🧾 **{selected_mess} Detailed Invoice:**")
+                    st.dataframe(mess_bill_df)
+                    
+                    mess_total = mess_bill_df["Total"].sum()
+                    st.metric(label=f"{selected_mess} Total Amount Due", value=f"₹{mess_total}")
+                    
+                    # --- BILL DOWNLOAD FILE WITH SHOP NAME INSIDE ---
+                    # Ek temporary list banayi hai jiske top par shop ka naam rahega
+                    bill_date = datetime.now().strftime('%Y-%m-%d')
+                    download_text = f"--- ANNAPURNA VEGETABLE SHOP ---\n"
+                    download_text += f"INVOICE FOR: {selected_mess}\n"
+                    download_text += f"DATE: {bill_date}\n"
+                    download_text += f"TOTAL AMOUNT: Rs. {mess_total}\n\n"
+                    download_text += mess_bill_df.to_csv(index=False)
+                    
+                    # Streamlit Download Button
+                    st.download_button(
+                        label=f"📥 Download {selected_mess} Official Bill",
+                        data=download_text.encode('utf-8'),
