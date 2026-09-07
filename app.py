@@ -7,34 +7,37 @@ import json
 # Page Configuration
 st.set_page_config(page_title="ANNAPURNA VEGETABLE SHOP", page_icon="🥦", layout="centered")
 
-# --- CUSTOM CSS FOR SHOP BRANDING & FIXING TEXT VISIBILITY ---
+# --- CUSTOM CSS FOR SHOP BRANDING & BLACK TEXT VISIBILITY (LIGHT & DARK MODE) ---
 st.markdown("""
 <style>
-    .stApp { background-color: #F7F9FC; }
+    /* Sabhi normal text, tab, labels ko hamesha visible rakhne ke liye */
+    .stApp, p, label, .stMarkdown, .stSelectbox, div[data-baseweb="select"] {
+        color: #222222 !important;
+    }
     .shop-header {
         background: linear-gradient(135deg, #FF9800, #F57C00);
-        color: white; padding: 25px; border-radius: 15px;
+        color: white !important; padding: 25px; border-radius: 15px;
         text-align: center; margin-bottom: 25px;
         box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
     }
     .shop-header h1 { color: white !important; font-size: 28px !important; font-weight: bold !important; margin: 0; }
     .shop-header p { color: #FFF3E0 !important; font-size: 16px !important; margin: 5px 0 0 0; }
     
-    /* 🚩 FIX: Enforcing dark text color on Tabs so they are always visible */
+    /* Tabs ke text ko zabardasti bold aur visible karne ke liye */
     button[data-baseweb="tab"] p {
-        color: #333333 !important;
+        color: #111111 !important;
         font-weight: bold !important;
-        font-size: 14px !important;
+        font-size: 15px !important;
     }
-    /* Active tab color styling */
     button[aria-selected="true"] p {
-        color: #F57C00 !important;
+        color: #E65100 !important;
+        border-bottom: 2px solid #E65100;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 🟢 🚩 YAHAN APNI REAL GOOGLE WEB APP KI LINK DIRECT PASTE KAREIN (e.g., https://google.com)
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxbbUBdxj__qToZfF33nT2E3E464K9i3v6S9vDSaxLx4ll8nwNrY8gDaDQqN2sfJbQ2/exec"
+# 🟢 APNI GOOGLE WEB APP KI LINK YAHAN PASTE KAREIN
+SCRIPT_URL = "https://google.com"
 
 # Shop Main Banner on Top
 st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allow_html=True)
@@ -146,9 +149,11 @@ else:
             else:
                 df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
                 mandi_list = df.groupby("Item")["Qty"].sum().reset_index()
+                # 🚩 FIX: Serial Number 1 se start karne ke liye
+                mandi_list.index = mandi_list.index + 1
                 st.dataframe(mandi_list)
 
-        # TAB 2: Nayi Sabji Add karne ka form
+        # TAB 2: Nayi Sabji Add
         with tab2:
             st.subheader("➕ Nayi Sabji ya Fruit Ka Name Jodein")
             with st.form("add_item_form", clear_on_submit=True):
@@ -194,6 +199,8 @@ else:
                 st.write("📊 **Sabhi Mess Ka Total Kharcha:**")
                 summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
                 summary_df.columns = ["Mess Name", "Total Bill (₹)"]
+                # 🚩 FIX: Serial Number 1 se start
+                summary_df.index = summary_df.index + 1
                 st.dataframe(summary_df)
                 
                 st.markdown("---")
@@ -204,18 +211,15 @@ else:
                 selected_mess = st.selectbox("Mess Chunein:", unique_messes)
                 
                 # Filter data for selected mess
-                mess_bill_df = calc_df[calc_df["Mess"] == selected_mess][["Date", "Item", "Qty", "Rate", "Total"]]
+                mess_bill_df = calc_df[calc_df["Mess"] == selected_mess][["Date", "Item", "Qty", "Rate", "Total"]].reset_index(drop=True)
+                # 🚩 FIX: Serial Number 1 se start sabhi messo me
+                mess_bill_df.index = mess_bill_df.index + 1
+                
+                # Screen par display karne ke liye header aur table
+                st.markdown(f"### 📋 ANNAPURNA VEGETABLE SHOP - {selected_mess} BILL")
                 st.dataframe(mess_bill_df)
                 
-                # Total for selected mess
+                # Total Bill Amount Metric
                 mess_total = mess_bill_df["Total"].sum()
-                st.metric(label=f"Total Bill for {selected_mess}", value=f"₹{mess_total:,.2f}")
+                st.metric(label=f"Total Bill Amount ({selected_mess})", value=f"₹{mess_total:,.2f}")
                 
-                # Download Button for the selected mess bill
-                csv_data = mess_bill_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label=f"📥 Download {selected_mess} Bill (CSV)",
-                    data=csv_data,
-                    file_name=f"Bill_{selected_mess}_{datetime.now().strftime('%Y%m%d')}.csv",
-                    mime="text/csv"
-                )
