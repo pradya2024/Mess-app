@@ -188,31 +188,23 @@ else:
                 st.markdown("---")
                 
                 # --- SEPARATE MESS FILTER & DOWNLOAD ---
-                st.write("🔍 **Kisi Ek Mess Ka Detail Bill Dekhein aur Download Karein:**")
-                all_messes = ["HQ", "RTT", "FFC", "FC", "SO'S", "GO'S", "VEG SHOP"]
-                selected_mess = st.selectbox("Mess Chunein jiska bill nikalna hai:", all_messes)
+                st.write("🔍 **Kisi Ek Mess Ka Detail Bill Dekhein & Download Karein:**")
+                unique_messes = calc_df["Mess"].unique()
+                selected_mess = st.selectbox("Mess Chunein:", unique_messes)
                 
+                # Filter data for selected mess
                 mess_bill_df = calc_df[calc_df["Mess"] == selected_mess][["Date", "Item", "Qty", "Rate", "Total"]]
+                st.dataframe(mess_bill_df)
                 
-                if mess_bill_df.empty:
-                    st.warning(f"⚠️ {selected_mess} ne aaj koi demand entry nahi ki hai.")
-                else:
-                    st.write(f"🧾 **{selected_mess} Detailed Invoice:**")
-                    st.dataframe(mess_bill_df)
-                    
-                    mess_total = mess_bill_df["Total"].sum()
-                    st.metric(label=f"{selected_mess} Total Amount Due", value=f"₹{mess_total}")
-                    
-                    # --- BILL DOWNLOAD FILE WITH SHOP NAME INSIDE ---
-                    bill_date = datetime.now().strftime('%Y-%m-%d')
-                    download_text = f"--- ANNAPURNA VEGETABLE SHOP ---\n"
-                    download_text += f"INVOICE FOR: {selected_mess}\n"
-                    download_text += f"DATE: {bill_date}\n"
-                    download_text += f"TOTAL AMOUNT: Rs. {mess_total}\n\n"
-                    download_text += mess_bill_df.to_csv(index=False)
-                    
-                    # Streamlit Download Button (FIXED CLOSING BRACKET)
-                    st.download_button(
-                        label=f"📥) Download {selected_mess} Official Bill",
-                        data=download_text.encode('utf-8'),
-                        file_name=f"Annapurna_Bill_{selected_mess}_{bill_date}.txt",
+                # Total for selected mess
+                mess_total = mess_bill_df["Total"].sum()
+                st.metric(label=f"Total Bill for {selected_mess}", value=f"₹{mess_total:,.2f}")
+                
+                # Download Button for the selected mess bill
+                csv_data = mess_bill_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label=f"📥 Download {selected_mess} Bill (CSV)",
+                    data=csv_data,
+                    file_name=f"Bill_{selected_mess}_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv"
+                )
