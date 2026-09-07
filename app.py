@@ -10,7 +10,6 @@ st.set_page_config(page_title="ANNAPURNA VEGETABLE SHOP", page_icon="🥦", layo
 # --- CUSTOM CSS FOR SHOP BRANDING & BLACK TEXT VISIBILITY (LIGHT & DARK MODE) ---
 st.markdown("""
 <style>
-    /* Sabhi normal text, tab, labels ko hamesha visible rakhne ke liye */
     .stApp, p, label, .stMarkdown, .stSelectbox, div[data-baseweb="select"] {
         color: #222222 !important;
     }
@@ -23,7 +22,6 @@ st.markdown("""
     .shop-header h1 { color: white !important; font-size: 28px !important; font-weight: bold !important; margin: 0; }
     .shop-header p { color: #FFF3E0 !important; font-size: 16px !important; margin: 5px 0 0 0; }
     
-    /* Tabs ke text ko zabardasti bold aur visible karne ke liye */
     button[data-baseweb="tab"] p {
         color: #111111 !important;
         font-weight: bold !important;
@@ -36,11 +34,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 🟢 APNI GOOGLE WEB APP KI LINK YAHAN PASTE KAREIN
-SCRIPT_URL = "https://google.com"
+# 🟢 🚩 IMP: Yahan "https://google.com" ko hata kar apni sahi Google Macro/Web App Link dalein!
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxbbUBdxj__qToZfF33nT2E3E464K9i3v6S9vDSaxLx4ll8nwNrY8gDaDQqN2sfJbQ2/exec"
 
 # Shop Main Banner on Top
-st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allowed_html=True)
 
 # --- LOGIN CREDENTIALS ---
 USER_CREDENTIALS = {
@@ -133,9 +131,11 @@ else:
                         st.success(f"✅ Success: {item} ki {qty} Qty demand record ho gayi!")
                         st.balloons()
                     else:
-                        st.error("⚠️ Error!")
-                except:
-                    st.error("❌ Connection Error.")
+                        # 🚩 FIX: Ab ye exact status code batayega ki error kyun hai
+                        st.error(f"⚠️ Server Error! Status Code: {res.status_code}")
+                except Exception as e:
+                    # 🚩 FIX: Ab ye poora connection error error screen par dikhayega
+                    st.error(f"❌ Connection Error: {str(e)}")
                 
     # ---- 📊 ADMIN (OWNER) LOGGED IN ----
     else:
@@ -149,7 +149,6 @@ else:
             else:
                 df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
                 mandi_list = df.groupby("Item")["Qty"].sum().reset_index()
-                # 🚩 FIX: Serial Number 1 se start karne ke liye
                 mandi_list.index = mandi_list.index + 1
                 st.dataframe(mandi_list)
 
@@ -199,7 +198,6 @@ else:
                 st.write("📊 **Sabhi Mess Ka Total Kharcha:**")
                 summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
                 summary_df.columns = ["Mess Name", "Total Bill (₹)"]
-                # 🚩 FIX: Serial Number 1 se start
                 summary_df.index = summary_df.index + 1
                 st.dataframe(summary_df)
                 
@@ -212,14 +210,15 @@ else:
                 
                 # Filter data for selected mess
                 mess_bill_df = calc_df[calc_df["Mess"] == selected_mess][["Date", "Item", "Qty", "Rate", "Total"]].reset_index(drop=True)
-                # 🚩 FIX: Serial Number 1 se start sabhi messo me
                 mess_bill_df.index = mess_bill_df.index + 1
                 
-                # Screen par display karne ke liye header aur table
                 st.markdown(f"### 📋 ANNAPURNA VEGETABLE SHOP - {selected_mess} BILL")
                 st.dataframe(mess_bill_df)
                 
-                # Total Bill Amount Metric
                 mess_total = mess_bill_df["Total"].sum()
                 st.metric(label=f"Total Bill Amount ({selected_mess})", value=f"₹{mess_total:,.2f}")
+                
+                download_df = mess_bill_df.copy()
+                download_df.index.name = "Sl No"
+                download_df = download_df.reset_index()
                 
