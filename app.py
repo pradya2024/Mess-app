@@ -7,12 +7,11 @@ import json
 # Page Configuration
 st.set_page_config(page_title="Mess Supply Pro", page_icon="🥦", layout="centered")
 
-# 🟢 APNI GOOGLE WEB APP KI LINK YAHAN DAALEIN
-# Jo lambi URL link aapne copy ki hai, use niche ke dono quotes "" ke beech mein paste karein
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9KFYaonjtoug4uN4d_iZyQG4F8Z0POv6gTfpdSwgC5k-CHHm70PLvwlveR7NNJUaB/exec"
+# 🟢 APNI GOOGLE WEB APP KI LAMBI LINK YAHAN DAALEIN
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxbbUBdxj__qToZfF33nT2E3E464K9i3v6S9vDSaxLx4ll8nwNrY8gDaDQqN2sfJbQ2/exec"
 
 st.title("📱 Mess Supply Pro")
-st.write("Secure Demand & Billing System")
+st.write("Master Demand & Mandi Billing System")
 
 # --- LOGIN CREDENTIALS ---
 USER_CREDENTIALS = {
@@ -23,8 +22,26 @@ USER_CREDENTIALS = {
 
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'username' not in st.session_state: st.session_state.username = ""
+if 'mandi_rates' not in st.session_state: st.session_state.mandi_rates = {}
 
-rates = {"Aloo (Potato)": 30, "Tamatar (Tomato)": 40, "Pyaj (Onion)": 35, "Kela (Banana)": 50, "Seb (Apple)": 120}
+# Google Script API se live database load karna (Demands aur Sabji List dono)
+try:
+    response = requests.get(SCRIPT_URL)
+    api_data = response.json()
+    available_items = api_data.get("items", ["Aloo", "Tamatar", "Pyaj"])
+    raw_demands = api_data.get("demands", [])
+    if raw_demands:
+        df = pd.DataFrame(raw_demands)
+    else:
+        df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
+except:
+    available_items = ["Aloo", "Tamatar", "Pyaj"]
+    df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
+
+# Session rates ko sync karna
+for item in available_items:
+    if item not in st.session_state.mandi_rates:
+        st.session_state.mandi_rates[item] = 0.0
 
 # ==========================================
 # 🔐 SCREEN 1: LOGIN SYSTEM
@@ -60,17 +77,6 @@ else:
         st.session_state.username = ""
         st.rerun()
 
-    # Google Script API se live data load karna
-    try:
-        response = requests.get(SCRIPT_URL)
-        raw_data = response.json()
-        if raw_data and len(raw_data) > 0:
-            df = pd.DataFrame(raw_data)
-        else:
-            df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
-    except:
-        df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
-
     # ---- 🟢 MESS MANAGER LOGGED IN ----
     if st.session_state.username != "admin":
         st.subheader("📋 New Demand Form")
@@ -78,51 +84,88 @@ else:
         st.info(f"Aap {current_mess} ke liye demand daal rahe hain.")
         
         with st.form("demand_form", clear_on_submit=True):
-            item = st.selectbox("Select Item:", list(rates.keys()))
+            item = st.selectbox("Select Sabji / Fruit Name:", available_items)
             qty = st.number_input("Quantity (Kg / Dozen):", min_value=1.0, step=1.0)
             submit = st.form_submit_button("Submit Demand 🚀")
             
             if submit:
-                rate = rates[item]
-                total = qty * rate
-                
                 payload = {
+                    "action": "submit_demand",
                     "Date": datetime.now().strftime("%Y-%m-%d"),
                     "Mess": current_mess,
                     "Item": item,
                     "Qty": qty,
-                    "Rate": rate,
-                    "Total": total
+                    "Rate": 0,
+                    "Total": 0
                 }
-                
                 try:
                     res = requests.post(SCRIPT_URL, data=json.dumps(payload))
                     if res.status_code == 200:
-                        st.success("✅ Success: Data Google Sheet mein save ho gaya!")
+                        st.success(f"✅ Success: {item} ki {qty} Qty demand record ho gayi!")
                         st.balloons()
                     else:
-                        st.error("⚠️ Server problem: Data save nahi hua.")
+                        st.error("⚠️ Error!")
                 except:
-                    st.error("❌ Connection Error: Data send nahi ho paya.")
+                    st.error("❌ Connection Error.")
                 
     # ---- 📊 ADMIN (OWNER) LOGGED IN ----
     else:
-        tab1, tab2 = st.tabs(["🛒 Mandi Packing List", "💰 Mess Wise Bills"])
+        tab1, tab2, tab3, tab4 = st.tabs(["🛒 Mandi Packing List", "➕ Add New Sabji/Fruit", "💰 Today's Mandi Rates", "💵 Final Mess Bills"])
         
-        if df.empty or len(df) == 0:
-            st.info("Abhi tak kisi bhi mess ne demand nahi bheji hai.")
-        else:
-            with tab1:
-                st.subheader("🛒 Mandi Purchase Consolidated List")
+        # TAB 1: Packing List
+        with tab1:
+            st.subheader("🛒 Mandi Purchase Consolidated List")
+            if df.empty or len(df) == 0:
+                st.info("Abhi tak kisi bhi mess ne demand nahi bheji hai.")
+            else:
                 df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
                 mandi_list = df.groupby("Item")["Qty"].sum().reset_index()
                 st.dataframe(mandi_list)
 
-            with tab2:
-                st.subheader("💰 Live Mess Wise Bills")
-                df["Total"] = pd.to_numeric(df["Total"], errors='coerce').fillna(0)
-                billing_list = df.groupby("Mess")["Total"].sum().reset_index()
+        # TAB 2: Nayi Sabji Add karne ka form
+        with tab2:
+            st.subheader("➕ Nayi Sabji ya Fruit Ka Name Jodein")
+            with st.form("add_item_form", clear_on_submit=True):
+                new_item_name = st.text_input("Nayi Sabji/Fruit Ka Naam Likhein (e.g., Bhindi, Gobhi, Seb):").strip()
+                add_submit = st.form_submit_button("Add Item to List 📝")
+                if add_submit and new_item_name:
+                    if new_item_name in available_items:
+                        st.warning("⚠️ Yeh naam pehle se list mein maujood hai.")
+                    else:
+                        payload = {"action": "add_item", "Item_Name": new_item_name}
+                        try:
+                            res = requests.post(SCRIPT_URL, data=json.dumps(payload))
+                            if res.status_code == 200:
+                                st.success(f"🎉 '{new_item_name}' ko list mein jod diya gaya hai! Ab managers ko ye option dikhega.")
+                                st.rerun()
+                        except:
+                            st.error("❌ Add karne mein dikkat aayi.")
+
+        # TAB 3: Today's Mandi Rates
+        with tab3:
+            st.subheader("📝 Mandi Se Aane Ke Baad Live Rate Update Karein")
+            with st.form("rate_form"):
+                updated_rates = {}
+                for item in available_items:
+                    updated_rates[item] = st.number_input(f"{item} Rate (₹):", min_value=0.0, value=st.session_state.mandi_rates.get(item, 0.0), step=1.0)
+                rate_submit = st.form_submit_button("Save Today's Rates 💾")
+                if rate_submit:
+                    st.session_state.mandi_rates = updated_rates
+                    st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
+
+        # TAB 4: Final Split Billing
+        with tab4:
+            st.subheader("💵 Mandi Rates Ke Hisab Se Final Bills")
+            if df.empty or len(df) == 0:
+                st.info("No data available.")
+            else:
+                calc_df = df.copy()
+                calc_df["Qty"] = pd.to_numeric(calc_df["Qty"], errors='coerce').fillna(0)
+                calc_df["Rate"] = calc_df["Item"].map(st.session_state.mandi_rates)
+                calc_df["Total"] = calc_df["Qty"] * calc_df["Rate"]
+                
+                billing_list = calc_df.groupby("Mess")["Total"].sum().reset_index()
                 st.dataframe(billing_list)
                 
-                if st.checkbox("Show Full Ledger View"):
-                    st.dataframe(df)
+                if st.checkbox("Show Detailed Ledger"):
+                    st.dataframe(calc_df)
