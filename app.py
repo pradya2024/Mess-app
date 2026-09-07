@@ -212,16 +212,12 @@ else:
                 mess_bill_df = calc_df[calc_df["Mess"] == selected_mess][["Date", "Item", "Qty", "Rate", "Total"]].reset_index(drop=True)
                 mess_bill_df.index = mess_bill_df.index + 1
                 
-                # Screen par header dikhane ke liye
                 st.markdown(f"## 📋 ANNAPURNA VEGETABLE SHOP")
                 st.markdown(f"### 🏢 FINAL BILL FOR MESS: **{selected_mess}**")
-                
-                # Screen display table
-                st.dataframe(mess_bill_df)
                 
                 # Total Bill Amount Metric
                 mess_total = mess_bill_df["Total"].sum()
                 st.metric(label=f"Total Bill Amount ({selected_mess})", value=f"₹{mess_total:,.2f}")
                 
-                st.markdown("---")
-                
+                # --- 🚩 NEW FIX 1: DOWNLOAD BUTTON KO TABLE SE PEHLE (TOP PAR) LAGAYA HAI ---
+                # Isse table side scroll ho bhi jaye toh bhi button ekdam samne dikhega hide nahi hoga
