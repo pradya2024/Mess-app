@@ -7,8 +7,7 @@ import json
 # Page Configuration
 st.set_page_config(page_title="ANNAPURNA VEGETABLE SHOP", page_icon="🥦", layout="centered")
 
-# --- CUSTOM CSS FOR SHOP BRANDING ---
-# 🚩 FIX: unsafe_allow_html (without 'ed') use kiya hai yahan
+# --- CUSTOM CSS FOR SHOP BRANDING & FIXING TEXT VISIBILITY ---
 st.markdown("""
 <style>
     .stApp { background-color: #F7F9FC; }
@@ -20,11 +19,22 @@ st.markdown("""
     }
     .shop-header h1 { color: white !important; font-size: 28px !important; font-weight: bold !important; margin: 0; }
     .shop-header p { color: #FFF3E0 !important; font-size: 16px !important; margin: 5px 0 0 0; }
+    
+    /* 🚩 FIX: Enforcing dark text color on Tabs so they are always visible */
+    button[data-baseweb="tab"] p {
+        color: #333333 !important;
+        font-weight: bold !important;
+        font-size: 14px !important;
+    }
+    /* Active tab color styling */
+    button[aria-selected="true"] p {
+        color: #F57C00 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# 🟢 APNI GOOGLE WEB APP KI LINK (Aapki purani working link)
-SCRIPT_URL = "https://google.com"
+# 🟢 🚩 YAHAN APNI REAL GOOGLE WEB APP KI LINK DIRECT PASTE KAREIN (e.g., https://google.com)
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxbbUBdxj__qToZfF33nT2E3E464K9i3v6S9vDSaxLx4ll8nwNrY8gDaDQqN2sfJbQ2/exec"
 
 # Shop Main Banner on Top
 st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allow_html=True)
@@ -42,7 +52,7 @@ if 'mandi_rates' not in st.session_state: st.session_state.mandi_rates = {}
 
 # Google Script API se live database load karna
 try:
-    response = requests.get(SCRIPT_URL)
+    response = requests.get(SCRIPT_URL, timeout=5)
     api_data = response.json()
     available_items = api_data.get("items", ["Aloo", "Tamatar", "Pyaj"])
     raw_demands = api_data.get("demands", [])
