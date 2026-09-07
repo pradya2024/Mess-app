@@ -1,26 +1,15 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import gspread
+import requests
+import json
 
 # Page Configuration
 st.set_page_config(page_title="Mess Supply Pro", page_icon="🥦", layout="centered")
 
-# --- DATABASE CONNECTION (GOOGLE SHEET BYPASS) ---
-# Ye aasan tarika bina kisi error ke seedhe sheet mein data jodd deta hai
-try:
-    gc = gspread.public()
-    # Aapki sheet ka link hum secrets se uthayenge
-    sheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
-    sh = gc.open_by_url(sheet_url)
-    worksheet = sh.get_worksheet(0) # Sheet1
-    
-    # Data read karna
-    records = worksheet.get_all_records()
-    df = pd.DataFrame(records)
-except:
-    # Agar pehli baar chal raha ho aur sheet khali ho
-    df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
+# 🟢 APNI GOOGLE WEB APP KI LINK YAHAN DAALEIN
+# Jo lambi URL link aapne copy ki hai, use niche ke dono quotes "" ke beech mein paste karein
+SCRIPT_URL = "https://script.google.com/macros/s/AKfycby9KFYaonjtoug4uN4d_iZyQG4F8Z0POv6gTfpdSwgC5k-CHHm70PLvwlveR7NNJUaB/exec"
 
 st.title("📱 Mess Supply Pro")
 st.write("Secure Demand & Billing System")
@@ -71,6 +60,17 @@ else:
         st.session_state.username = ""
         st.rerun()
 
+    # Google Script API se live data load karna
+    try:
+        response = requests.get(SCRIPT_URL)
+        raw_data = response.json()
+        if raw_data and len(raw_data) > 0:
+            df = pd.DataFrame(raw_data)
+        else:
+            df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
+    except:
+        df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
+
     # ---- 🟢 MESS MANAGER LOGGED IN ----
     if st.session_state.username != "admin":
         st.subheader("📋 New Demand Form")
@@ -86,20 +86,24 @@ else:
                 rate = rates[item]
                 total = qty * rate
                 
-                # Nayi Row ka data
-                date_str = datetime.now().strftime("%Y-%m-%d")
+                payload = {
+                    "Date": datetime.now().strftime("%Y-%m-%d"),
+                    "Mess": current_mess,
+                    "Item": item,
+                    "Qty": qty,
+                    "Rate": rate,
+                    "Total": total
+                }
                 
-                # Yeh tarika bina kisi credentials error ke direct Google Sheet form ki tarah data likhta hai
                 try:
-                    # Alternating way: URL connection se append karna
-                    import urllib.request
-                    import urllib.parse
-                    
-                    # Direct Google Sheet entry request form trick
-                    st.success("✅ Success: Demand record ho gayi hai!")
-                    st.balloons()
+                    res = requests.post(SCRIPT_URL, data=json.dumps(payload))
+                    if res.status_code == 200:
+                        st.success("✅ Success: Data Google Sheet mein save ho gaya!")
+                        st.balloons()
+                    else:
+                        st.error("⚠️ Server problem: Data save nahi hua.")
                 except:
-                    st.error("❌ Submission fail ho gaya.")
+                    st.error("❌ Connection Error: Data send nahi ho paya.")
                 
     # ---- 📊 ADMIN (OWNER) LOGGED IN ----
     else:
@@ -110,7 +114,6 @@ else:
         else:
             with tab1:
                 st.subheader("🛒 Mandi Purchase Consolidated List")
-                # Grouping numerical data safely
                 df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
                 mandi_list = df.groupby("Item")["Qty"].sum().reset_index()
                 st.dataframe(mandi_list)
