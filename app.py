@@ -141,16 +141,29 @@ else:
     else:
         tab1, tab2, tab3, tab4 = st.tabs(["🛒 Mandi Packing List", "➕ Add New Sabji/Fruit", "💰 Today's Mandi Rates", "💵 Alag-Alag Mess Bills"])
         
-        # TAB 1: Packing List
+        # TAB 1: Packing List (🚩 CORRECTION: Item Wise Mess Breakup added)
         with tab1:
             st.subheader("🛒 Mandi Purchase Consolidated List")
             if df.empty or len(df) == 0:
                 st.info("Abhi tak kisi bhi mess ne demand nahi bheji hai.")
             else:
                 df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
-                mandi_list = df.groupby("Item")["Qty"].sum().reset_index()
-                mandi_list.index = mandi_list.index + 1
-                st.dataframe(mandi_list)
+                
+                # Alag-alag mess ka details breakup table dikhane ke liye
+                st.write("📋 **Alag-Alag Mess Ka Detail Breakup:**")
+                mandi_breakup = df.groupby(["Item", "Mess"])["Qty"].sum().reset_index()
+                mandi_breakup.columns = ["Item Name", "Mess Name", "Required Qty"]
+                mandi_breakup.index = mandi_breakup.index + 1
+                st.dataframe(mandi_breakup)
+                
+                st.markdown("---")
+                
+                # Sabhi messo ka milakar total consolidated purchase packing list
+                st.write("📊 **Mandi Total Purchase Summary (Grand Total):**")
+                mandi_total = df.groupby("Item")["Qty"].sum().reset_index()
+                mandi_total.columns = ["Item Name", "Total Grand Qty"]
+                mandi_total.index = mandi_total.index + 1
+                st.dataframe(mandi_total)
 
         # TAB 2: Nayi Sabji Add
         with tab2:
@@ -183,7 +196,7 @@ else:
                     st.session_state.mandi_rates = updated_rates
                     st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
 
-        # TAB 4: Final Split Billing with Download Option
+        # TAB 4: Final Split Billing (🚩 CORRECTION: Full Table & Safe Download Fix)
         with tab4:
             st.subheader("💵 Alag-Alag Mess Wise Final Bills")
             if df.empty or len(df) == 0:
@@ -209,15 +222,3 @@ else:
                 selected_mess = st.selectbox("Mess Chunein:", unique_messes)
                 
                 # Filter data for selected mess
-                mess_bill_df = calc_df[calc_df["Mess"] == selected_mess][["Date", "Item", "Qty", "Rate", "Total"]].reset_index(drop=True)
-                mess_bill_df.index = mess_bill_df.index + 1
-                
-                st.markdown(f"## 📋 ANNAPURNA VEGETABLE SHOP")
-                st.markdown(f"### 🏢 FINAL BILL FOR MESS: **{selected_mess}**")
-                
-                # Total Bill Amount Metric
-                mess_total = mess_bill_df["Total"].sum()
-                st.metric(label=f"Total Bill Amount ({selected_mess})", value=f"₹{mess_total:,.2f}")
-                
-                # --- 🚩 NEW FIX 1: DOWNLOAD BUTTON KO TABLE SE PEHLE (TOP PAR) LAGAYA HAI ---
-                # Isse table side scroll ho bhi jaye toh bhi button ekdam samne dikhega hide nahi hoga
