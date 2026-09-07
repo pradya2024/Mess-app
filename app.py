@@ -141,42 +141,37 @@ else:
     else:
         tab1, tab2, tab3, tab4 = st.tabs(["🛒 Mandi Packing List", "➕ Add New Sabji/Fruit", "💰 Today's Mandi Rates", "💵 Alag-Alag Mess Bills"])
         
-        # TAB 1: Packing List (🚩 BREAKDOWN MATRIX WITH DOWNLOAD BUTTON)
+        # TAB 1: Packing List Matrix with Download Button
         with tab1:
             st.subheader("🛒 Mandi Purchase Consolidated List")
             if df.empty or len(df) == 0:
                 st.info("Abhi tak kisi bhi mess ne demand nahi bheji hai.")
             else:
-                df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
-                
-                # Pivot Table creation: Rows=Item, Columns=Mess, Values=Qty
-                matrix_df = df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
-                
-                # Grand Total column jodna
-                matrix_df['Total Qty'] = matrix_df.sum(axis=1)
-                matrix_df = matrix_df.reset_index()
-                matrix_df.columns.name = None
-                matrix_df = matrix_df.rename(columns={'Item': 'Item Name'})
-                
-                # Serial number 1 se set karna
-                matrix_df.index = matrix_df.index + 1
-                matrix_df.index.name = "Sl No"
-                matrix_df = matrix_df.reset_index()
-                
-                st.write("📊 **Mandi Packing Matrix (Item Wise Mess Breakdown & Total):**")
-                
-                # 🚩 NEW FIX: Mandi packing list download karne ka button table ke upar
-                mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
-                    data=mandi_csv_data,
-                    file_name=f"Mandi_Packing_List_{datetime.now().strftime('%Y%m%d')}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-                
-                st.markdown(" ") # Gap
-                st.dataframe(matrix_df)
+                try:
+                    df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
+                    matrix_df = df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
+                    matrix_df['Total Qty'] = matrix_df.sum(axis=1)
+                    matrix_df = matrix_df.reset_index()
+                    matrix_df.columns.name = None
+                    matrix_df = matrix_df.rename(columns={'Item': 'Item Name'})
+                    matrix_df.index = matrix_df.index + 1
+                    matrix_df.index.name = "Sl No"
+                    matrix_df = matrix_df.reset_index()
+                    
+                    st.write("📊 **Mandi Packing Matrix (Item Wise Mess Breakdown & Total):**")
+                    
+                    mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
+                        data=mandi_csv_data,
+                        file_name=f"Mandi_Packing_List_{datetime.now().strftime('%Y%m%d')}.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                    st.markdown(" ") 
+                    st.dataframe(matrix_df)
+                except Exception as e:
+                    st.error(f"Packing list layout error: {str(e)}")
 
         # TAB 2: Nayi Sabji Add
         with tab2:
@@ -209,17 +204,20 @@ else:
                     st.session_state.mandi_rates = updated_rates
                     st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
 
-        # TAB 4: Final Split Billing (Full working layout with metric and table fix)
+        # TAB 4: Final Split Billing (🚩 COMPLETELY SECURED FROM CRASHING)
         with tab4:
             st.subheader("💵 Alag-Alag Mess Wise Final Bills")
             if df.empty or len(df) == 0:
                 st.info("No data available.")
             else:
+                # Base calculations safely
                 calc_df = df.copy()
                 calc_df["Qty"] = pd.to_numeric(calc_df["Qty"], errors='coerce').fillna(0)
                 calc_df["Rate"] = calc_df["Item"].map(st.session_state.mandi_rates).fillna(0)
                 calc_df["Total"] = calc_df["Qty"] * calc_df["Rate"]
                 
-                # --- SUMMARY OVERVIEW ---
+                # --- SUMMARY OVERVIEW BLOCK ---
                 st.write("📊 **Sabhi Mess Ka Total Kharcha:**")
-                summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
+                try:
+                    summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
+                    summary_df.columns = ["Mess Name", "Total Bill (₹)"]
