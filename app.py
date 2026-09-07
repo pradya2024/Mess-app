@@ -204,13 +204,12 @@ else:
                     st.session_state.mandi_rates = updated_rates
                     st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
 
-        # TAB 4: Final Split Billing (🚩 COMPLETELY SECURED FROM CRASHING)
+        # TAB 4: Final Split Billing (🚩 FIXED SYNTAX ERROR - EXCEPT BLOCK BALANCED)
         with tab4:
             st.subheader("💵 Alag-Alag Mess Wise Final Bills")
             if df.empty or len(df) == 0:
                 st.info("No data available.")
             else:
-                # Base calculations safely
                 calc_df = df.copy()
                 calc_df["Qty"] = pd.to_numeric(calc_df["Qty"], errors='coerce').fillna(0)
                 calc_df["Rate"] = calc_df["Item"].map(st.session_state.mandi_rates).fillna(0)
@@ -221,3 +220,4 @@ else:
                 try:
                     summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
                     summary_df.columns = ["Mess Name", "Total Bill (₹)"]
+                    summary_df.index = summary_df.index + 1
