@@ -40,7 +40,6 @@ st.markdown("""
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxbbUBdxj__qToZfF33nT2E3E464K9i3v6S9vDSaxLx4ll8nwNrY8gDaDQqN2sfJbQ2/exec"
 
 # Shop Main Banner on Top
-# 🚩 FIXED: unsafe_allow_html ko yahan bilkul sahi kar diya hai
 st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allow_html=True)
 
 # --- LOGIN CREDENTIALS ---
@@ -213,13 +212,14 @@ else:
                 mess_bill_df = calc_df[calc_df["Mess"] == selected_mess][["Date", "Item", "Qty", "Rate", "Total"]].reset_index(drop=True)
                 mess_bill_df.index = mess_bill_df.index + 1
                 
-                st.markdown(f"### 📋 ANNAPURNA VEGETABLE SHOP - {selected_mess} BILL")
+                # 🚩 FIX 1: Screen par bill ke upar bada Header dikhane ke liye
+                st.markdown(f"## 📋 ANNAPURNA VEGETABLE SHOP")
+                st.markdown(f"### 🏢 FINAL BILL FOR MESS: **{selected_mess}**")
+                
+                # Screen display table
                 st.dataframe(mess_bill_df)
                 
+                # Total Bill Amount Metric
                 mess_total = mess_bill_df["Total"].sum()
                 st.metric(label=f"Total Bill Amount ({selected_mess})", value=f"₹{mess_total:,.2f}")
-                
-                download_df = mess_bill_df.copy()
-                download_df.index.name = "Sl No"
-                download_df = download_df.reset_index()
                 
