@@ -22,7 +22,7 @@ st.markdown("""
 </style>
 """, unsafe_allowed_html=True)
 
-# 🟢 APNI GOOGLE WEB APP KI LAMBI LINK (Wahi purani link)
+# 🟢 APNI GOOGLE WEB APP KI LINK (Aapki purani working link)
 SCRIPT_URL = "https://google.com"
 
 # Shop Main Banner on Top
@@ -204,7 +204,6 @@ else:
                     st.metric(label=f"{selected_mess} Total Amount Due", value=f"₹{mess_total}")
                     
                     # --- BILL DOWNLOAD FILE WITH SHOP NAME INSIDE ---
-                    # Ek temporary list banayi hai jiske top par shop ka naam rahega
                     bill_date = datetime.now().strftime('%Y-%m-%d')
                     download_text = f"--- ANNAPURNA VEGETABLE SHOP ---\n"
                     download_text += f"INVOICE FOR: {selected_mess}\n"
@@ -212,7 +211,8 @@ else:
                     download_text += f"TOTAL AMOUNT: Rs. {mess_total}\n\n"
                     download_text += mess_bill_df.to_csv(index=False)
                     
-                    # Streamlit Download Button
+                    # Streamlit Download Button (FIXED CLOSING BRACKET)
                     st.download_button(
                         label=f"📥 Download {selected_mess} Official Bill",
                         data=download_text.encode('utf-8'),
+                        file_name=f"Annapurna_Bill_{selected_mess}_{bill_date}.txt",
