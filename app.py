@@ -10,7 +10,6 @@ st.set_page_config(page_title="ANNAPURNA VEGETABLE SHOP", page_icon="🥦", layo
 # --- CUSTOM CSS FOR SHOP BRANDING & BLACK TEXT VISIBILITY (LIGHT & DARK MODE) ---
 st.markdown("""
 <style>
-    /* Sabhi normal text, tab, labels ko hamesha visible rakhne ke liye */
     .stApp, p, label, .stMarkdown, .stSelectbox, div[data-baseweb="select"] {
         color: #222222 !important;
     }
@@ -23,7 +22,6 @@ st.markdown("""
     .shop-header h1 { color: white !important; font-size: 28px !important; font-weight: bold !important; margin: 0; }
     .shop-header p { color: #FFF3E0 !important; font-size: 16px !important; margin: 5px 0 0 0; }
     
-    /* Tabs ke text ko zabardasti bold aur visible karne ke liye */
     button[data-baseweb="tab"] p {
         color: #111111 !important;
         font-weight: bold !important;
@@ -147,31 +145,30 @@ else:
             if df.empty or len(df) == 0:
                 st.info("Abhi tak kisi bhi mess ne demand nahi bheji hai.")
             else:
-                try:
-                    df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
-                    matrix_df = df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
-                    matrix_df['Total Qty'] = matrix_df.sum(axis=1)
-                    matrix_df = matrix_df.reset_index()
-                    matrix_df.columns.name = None
-                    matrix_df = matrix_df.rename(columns={'Item': 'Item Name'})
-                    matrix_df.index = matrix_df.index + 1
-                    matrix_df.index.name = "Sl No"
-                    matrix_df = matrix_df.reset_index()
-                    
-                    st.write("📊 **Mandi Packing Matrix (Item Wise Mess Breakdown & Total):**")
-                    
-                    mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
-                        data=mandi_csv_data,
-                        file_name=f"Mandi_Packing_List_{datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-                    st.markdown(" ") 
-                    st.dataframe(matrix_df)
-                except Exception as e:
-                    st.error(f"Packing list layout error: {str(e)}")
+                df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
+                
+                # Matrix Table Layout Setup
+                matrix_df = df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
+                matrix_df['Total Qty'] = matrix_df.sum(axis=1)
+                matrix_df = matrix_df.reset_index()
+                matrix_df.columns.name = None
+                matrix_df = matrix_df.rename(columns={'Item': 'Item Name'})
+                matrix_df.index = matrix_df.index + 1
+                matrix_df.index.name = "Sl No"
+                matrix_df = matrix_df.reset_index()
+                
+                st.write("📊 **Mandi Packing Matrix (Item Wise Mess Breakdown & Total):**")
+                
+                mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
+                    data=mandi_csv_data,
+                    file_name=f"Mandi_Packing_List_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+                st.markdown(" ") 
+                st.dataframe(matrix_df)
 
         # TAB 2: Nayi Sabji Add
         with tab2:
@@ -204,7 +201,7 @@ else:
                     st.session_state.mandi_rates = updated_rates
                     st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
 
-        # TAB 4: Final Split Billing (🚩 CLEAN FIXED VERSION - NO MORE SYNTAX ERROR)
+        # TAB 4: Final Split Billing (Ekdam simple aur crash-free code)
         with tab4:
             st.subheader("💵 Alag-Alag Mess Wise Final Bills")
             if df.empty or len(df) == 0:
@@ -215,9 +212,16 @@ else:
                 calc_df["Rate"] = calc_df["Item"].map(st.session_state.mandi_rates).fillna(0)
                 calc_df["Total"] = calc_df["Qty"] * calc_df["Rate"]
                 
-                # --- SUMMARY OVERVIEW BLOCK ---
+                # --- SUMMARY OVERVIEW ---
                 st.write("📊 **Sabhi Mess Ka Total Kharcha:**")
-                try:
-                    summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
-                    summary_df.columns = ["Mess Name", "Total Bill (₹)"]
-                    summary_df.index = summary_df.index + 1
+                summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
+                summary_df.columns = ["Mess Name", "Total Bill (₹)"]
+                summary_df.index = summary_df.index + 1
+                st.dataframe(summary_df)
+
+                st.markdown("---")
+                
+                # --- INDIVIDUAL MESS FILTER & DOWNLOAD ---
+                unique_messes = calc_df["Mess"].unique() if "Mess" in calc_df.columns else []
+                
+                if len(unique_messes) > 0:
