@@ -212,7 +212,7 @@ else:
                 mess_bill_df = calc_df[calc_df["Mess"] == selected_mess][["Date", "Item", "Qty", "Rate", "Total"]].reset_index(drop=True)
                 mess_bill_df.index = mess_bill_df.index + 1
                 
-                # 🚩 FIX 1: Screen par bill ke upar bada Header dikhane ke liye
+                # Screen par header dikhane ke liye
                 st.markdown(f"## 📋 ANNAPURNA VEGETABLE SHOP")
                 st.markdown(f"### 🏢 FINAL BILL FOR MESS: **{selected_mess}**")
                 
@@ -222,4 +222,6 @@ else:
                 # Total Bill Amount Metric
                 mess_total = mess_bill_df["Total"].sum()
                 st.metric(label=f"Total Bill Amount ({selected_mess})", value=f"₹{mess_total:,.2f}")
+                
+                st.markdown("---")
                 
