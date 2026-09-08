@@ -35,7 +35,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # 🟢 APNI GOOGLE WEB APP KI LINK YAHAN PASTE KAREIN
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxbbUBdxj__qToZfF33nT2E3E464K9i3v6S9vDSaxLx4ll8nwNrY8gDaDQqN2sfJbQ2/exec"
+SCRIPT_URL = "https://google.com"
 
 # Shop Main Banner on Top
 st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allow_html=True)
@@ -202,17 +202,17 @@ else:
                     st.session_state.mandi_rates = updated_rates
                     st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
 
-        # TAB 4: Final Split Billing (🚩 NEW FULL PROOF FIX FOR DROPDOWN & BUTTON)
+        # TAB 4: Final Split Billing (🚩 CRASH PROOF FIXED VERSION)
         with tab4:
             st.subheader("💵 Alag-Alag Mess Wise Final Bills")
             
-            # 1. Base calculations tayyar karna
+            # 1. Safe copy and mathematical calculations
             calc_df = df.copy()
             calc_df["Qty"] = pd.to_numeric(calc_df["Qty"], errors='coerce').fillna(0)
             calc_df["Rate"] = calc_df["Item"].map(st.session_state.mandi_rates).fillna(0)
             calc_df["Total"] = calc_df["Qty"] * calc_df["Rate"]
             
-            # --- SUMMARY OVERVIEW ---
+            # --- SUMMARY OVERVIEW DISPLAY ---
             st.write("📊 **Sabhi Mess Ka Total Kharcha:**")
             if not calc_df.empty:
                 summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
@@ -220,7 +220,7 @@ else:
                 summary_df.index = summary_df.index + 1
                 st.dataframe(summary_df)
             else:
-                st.info("Abhi koi summary available nahi hai.")
+                st.info("Abhi tak koi data received nahi hua hai.")
 
             st.markdown("---")
             
