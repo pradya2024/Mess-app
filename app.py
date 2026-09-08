@@ -141,15 +141,14 @@ else:
         selected_date = st.date_input("Filter Data By Date:", value=date.today())
         formatted_selected_date = selected_date.strftime("%Y-%m-%d")
         
-        # 🚩 FIX: Date Strings को अच्छे से क्लीन करके मैच करना (ताकि टाइमज़ोन या स्पेस की दिक्कत न हो)
+        # Date Strings को अच्छे से क्लीन करके मैच करना
         if not df.empty and "Date" in df.columns:
-            # ISO format या timestamp में से सिर्फ YYYY-MM-DD निकालना
             df["Date_Clean"] = df["Date"].astype(str).str.slice(0, 10).str.strip()
             filtered_df = df[df["Date_Clean"] == formatted_selected_date].reset_index(drop=True)
         else:
             filtered_df = df.copy()
 
-        # Debugging के लिए: अगर लिस्ट खाली है तो एडलिम को दिखाना कि शीट में कौन सी डेट्स मौजूद हैं
+        # Debugging के लिए warning box
         if filtered_df.empty and not df.empty and "Date" in df.columns:
             unique_dates = df["Date"].unique()
             st.warning(f"⚠️ शीट में आज ({formatted_selected_date}) की कोई डिमांड नहीं मिली। उपलब्ध तारीखें: {list(unique_dates)}")
@@ -222,3 +221,6 @@ else:
                         match = filtered_df[filtered_df["Item"] == item]
                         if not match.empty and "Rate" in match.columns:
                             try:
+                                current_rate_val = float(match.iloc[0]["Rate"])
+                            except:
+                                current_rate_val = 0.0
