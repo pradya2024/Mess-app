@@ -149,9 +149,9 @@ else:
                 try:
                     dt_str = str(date_val).strip()
                     if "T" in dt_str:
-                        return dt_str.split("T")[0]
+                        return dt_str.split("T")
                     elif " " in dt_str:
-                        return dt_str.split(" ")[0]
+                        return dt_str.split(" ")
                     return dt_str
                 except:
                     return str(date_val)[:10]
@@ -217,14 +217,15 @@ else:
                     except Exception as e:
                         st.error(f"❌ Connection Error: {str(e)}")
 
-        # TAB 3: Today's Mandi Rates Form (100% Error Free & Fixed Syntax)
+        # TAB 3: Today's Mandi Rates Form (सुपर सिंपल और एरर-फ्री वर्शन)
         with tab3:
             st.subheader("💰 Aaj Ke Mandi Rates Set Karein")
             with st.form("rates_form"):
                 updated_rates = {}
                 for item in available_items:
                     current_rate_val = 0.0
-                    if not filtered_df.empty and "Item" in filtered_df.columns:
+                    
+                    # बिना try-except ब्लॉक के सीधा सुरक्षित चेकिंग
+                    if not filtered_df.empty:
                         match = filtered_df[filtered_df["Item"] == item]
-                        if not match.empty and "Rate" in match.columns:
-                            try:
+                        if not match.empty:
