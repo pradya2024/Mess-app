@@ -21,7 +21,6 @@ st.markdown("""
     }
     .shop-header h1 { color: white !important; font-size: 28px !important; font-weight: bold !important; margin: 0; }
     .shop-header p { color: #FFF3E0 !important; font-size: 16px !important; margin: 5px 0 0 0; }
-    
     button[data-baseweb="tab"] p {
         color: #111111 !important;
         font-weight: bold !important;
@@ -47,9 +46,12 @@ USER_CREDENTIALS = {
     "fc": "fc123", "so_s": "so123", "go_s": "go123", "veg_shop": "veg123"
 }
 
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-if 'username' not in st.session_state: st.session_state.username = ""
-if 'mandi_rates' not in st.session_state: st.session_state.mandi_rates = {}
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'username' not in st.session_state:
+    st.session_state.username = ""
+if 'mandi_rates' not in st.session_state:
+    st.session_state.mandi_rates = {}
 
 # Google Script API se live database load karna
 try:
@@ -108,7 +110,7 @@ else:
     if st.session_state.username != "admin":
         st.subheader("📋 New Demand Form")
         current_mess = name_mapping[st.session_state.username]
-        st.info(f"Aap {current_mess} ke liye demand daal rahe hain.")
+        st.info(f"Aap {current_mess} ke liye demand daल रहे हैं.")
         
         with st.form("demand_form", clear_on_submit=True):
             item = st.selectbox("Select Sabji / Fruit Name:", available_items)
@@ -141,31 +143,28 @@ else:
         selected_date = st.date_input("Filter Data By Date:", value=date.today())
         formatted_selected_date = selected_date.strftime("%Y-%m-%d")
         
-        # ISO Timestamp (UTC) को क्लीन करके Local Date (YYYY-MM-DD) में बदलना
+        # ISO Timestamp (UTC) क्लीनर
         if not df.empty and "Date" in df.columns:
             def clean_date_string(date_val):
                 try:
                     dt_str = str(date_val).strip()
                     if "T" in dt_str:
-                        parsed_dt = pd.to_datetime(dt_str)
-                        return parsed_dt.strftime("%Y-%m-%d")
+                        return dt_str.split("T")[0]
                     elif " " in dt_str:
                         return dt_str.split(" ")[0]
                     return dt_str
                 except:
                     return str(date_val)[:10]
-
             df["Date_Clean"] = df["Date"].apply(clean_date_string)
             filtered_df = df[df["Date_Clean"] == formatted_selected_date].reset_index(drop=True)
         else:
             filtered_df = df.copy()
 
-        # अगर आज का डेटा खाली है तो एडमिन के लिए हेल्प बॉक्स
+        # हेल्प बॉक्स
         if filtered_df.empty and not df.empty and "Date" in df.columns:
-            prev_date_str = date.today().replace(day=max(1, date.today().day-1)).strftime('%Y-%m-%d')
-            st.info(f"💡 यदि आज की डिमांड नहीं दिख रही है, तो कैलेंडर में **एक दिन पीछे की तारीख ({prev_date_str})** चुनकर देखें।")
+            st.info(f"💡 यदि आज की डिमांड नहीं दिख रही है, तो कैलेंडर में एक दिन पीछे की तारीख चुनकर देखें।")
 
-        st.info(f"📅 Abhi niche ka saara data sirf date: **{formatted_selected_date}** ka dikhai de raha hai.")
+        st.info(f"📅 Abhi data sirf date: **{formatted_selected_date}** ka dikhai de raha hai.")
         st.markdown("---")
 
         tab1, tab2, tab3, tab4 = st.tabs(["🛒 Mandi Packing List", "➕ Add New Sabji/Fruit", "💰 Today's Mandi Rates", "💵 Alag-Alag Mess Bills"])
@@ -174,7 +173,7 @@ else:
         with tab1:
             st.subheader("🛒 Mandi Purchase Consolidated List")
             if filtered_df.empty:
-                st.info(f"Chuni hui date ({formatted_selected_date}) ke liye abhi tak kisi bhi mess ne demand nahi bheji hai.")
+                st.info("Chuni hui date ke liye abhi tak koi demand nahi mili hai.")
             else:
                 filtered_df["Qty"] = pd.to_numeric(filtered_df["Qty"], errors='coerce').fillna(0)
                 try:
@@ -187,8 +186,7 @@ else:
                     matrix_df.index.name = "Sl No"
                     matrix_df = matrix_df.reset_index()
                     
-                    st.write(f"📊 **Mandi Packing Matrix for {formatted_selected_date}:**")
-                    
+                    st.write(f"📊 **Mandi Packing Matrix ({formatted_selected_date}):**")
                     mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
@@ -197,30 +195,37 @@ else:
                         mime="text/csv",
                         use_container_width=True
                     )
-                    st.markdown(" ") 
                     st.dataframe(matrix_df)
                 except Exception as ex:
-                    st.error(f"Matrix generate karne me samasya: {str(ex)}")
                     st.dataframe(filtered_df[["Date", "Mess", "Item", "Qty"]])
 
         # TAB 2: Nayi Sabji Add
         with tab2:
             st.subheader("➕ Nayi Sabji ya Fruit Ka Name Jodein")
             with st.form("add_item_form", clear_on_submit=True):
-                new_item_name = st.text_input("Enter New Item Name (e.g. Bhindi, Gobi):").strip()
+                new_item_name = st.text_input("Enter New Item Name:").strip()
                 add_submit = st.form_submit_button("Add Item to Database ➕")
-                
                 if add_submit and new_item_name:
                     payload = {"action": "add_item", "item_name": new_item_name}
                     try:
                         res = requests.post(SCRIPT_URL, data=json.dumps(payload))
                         if res.status_code == 200:
-                            st.success(f"✅ Success: '{new_item_name}' को लिस्ट में जोड़ दिया गया है!")
+                            st.success(f"✅ Success: '{new_item_name}' jodh diya gaya hai!")
                             st.rerun()
                         else:
-                            st.error("⚠️ Server Error! Item add nahi ho paya.")
+                            st.error("⚠️ Server Error!")
                     except Exception as e:
                         st.error(f"❌ Connection Error: {str(e)}")
 
         # TAB 3: Today's Mandi Rates Form
         with tab3:
+            st.subheader("💰 Aaj Ke Mandi Rates Set Karein")
+            with st.form("rates_form"):
+                updated_rates = {}
+                for item in available_items:
+                    current_rate_val = 0.0
+                    if not filtered_df.empty and "Item" in filtered_df.columns:
+                        match = filtered_df[filtered_df["Item"] == item]
+                        if not match.empty and "Rate" in match.columns:
+                            try:
+                                val = float(match.iloc[0]["Rate"])
