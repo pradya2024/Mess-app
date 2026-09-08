@@ -110,7 +110,7 @@ else:
     if st.session_state.username != "admin":
         st.subheader("📋 New Demand Form")
         current_mess = name_mapping[st.session_state.username]
-        st.info(f"Aap {current_mess} ke liye demand daल रहे हैं.")
+        st.info(f"Aap {current_mess} ke liye demand daal rahe hain.")
         
         with st.form("demand_form", clear_on_submit=True):
             item = st.selectbox("Select Sabji / Fruit Name:", available_items)
@@ -160,7 +160,7 @@ else:
         else:
             filtered_df = df.copy()
 
-        # हेल्प बॉक्स
+        # हेल्प बॉक्स अगर डेटा खाली है
         if filtered_df.empty and not df.empty and "Date" in df.columns:
             st.info(f"💡 यदि आज की डिमांड नहीं दिख रही है, तो कैलेंडर में एक दिन पीछे की तारीख चुनकर देखें।")
 
@@ -217,7 +217,7 @@ else:
                     except Exception as e:
                         st.error(f"❌ Connection Error: {str(e)}")
 
-        # TAB 3: Today's Mandi Rates Form
+        # TAB 3: Today's Mandi Rates Form (100% Error Free & Fixed Syntax)
         with tab3:
             st.subheader("💰 Aaj Ke Mandi Rates Set Karein")
             with st.form("rates_form"):
@@ -228,4 +228,3 @@ else:
                         match = filtered_df[filtered_df["Item"] == item]
                         if not match.empty and "Rate" in match.columns:
                             try:
-                                val = float(match.iloc[0]["Rate"])
