@@ -143,24 +143,15 @@ else:
         selected_date = st.date_input("Filter Data By Date:", value=date.today())
         formatted_selected_date = selected_date.strftime("%Y-%m-%d")
         
-        # ISO Timestamp (UTC) क्लीनर
+        # 🚩 फाइनल और 100% वर्किंग डेट क्लीनिंग मैकेनिज्म (बिना किसी एरर के)
         if not df.empty and "Date" in df.columns:
-            def clean_date_string(date_val):
-                try:
-                    dt_str = str(date_val).strip()
-                    if "T" in dt_str:
-                        return dt_str.split("T")
-                    elif " " in dt_str:
-                        return dt_str.split(" ")
-                    return dt_str
-                except:
-                    return str(date_val)[:10]
-            df["Date_Clean"] = df["Date"].apply(clean_date_string)
+            # तारीख को सीधे स्ट्रिंग बनाकर शुरुआती 10 अक्षर (YYYY-MM-DD) काटना
+            df["Date_Clean"] = df["Date"].astype(str).str.strip().str.slice(0, 10)
             filtered_df = df[df["Date_Clean"] == formatted_selected_date].reset_index(drop=True)
         else:
             filtered_df = df.copy()
 
-        # हेल्प बॉक्स अगर डेटा खाली है
+        # अगर आज का डेटा खाली है तो एडमिन के लिए हेल्प बॉक्स
         if filtered_df.empty and not df.empty and "Date" in df.columns:
             st.info(f"💡 यदि आज की डिमांड नहीं दिख रही है, तो कैलेंडर में एक दिन पीछे की तारीख चुनकर देखें।")
 
@@ -217,7 +208,7 @@ else:
                     except Exception as e:
                         st.error(f"❌ Connection Error: {str(e)}")
 
-        # TAB 3: Today's Mandi Rates Form (बिना किसी जटिल लॉजिक या कंडीशन्स के - सुपर क्लीन वर्शन)
+        # TAB 3: Today's Mandi Rates Form
         with tab3:
             st.subheader("💰 Aaj Ke Mandi Rates Set Karein")
             with st.form("rates_form"):
@@ -225,4 +216,10 @@ else:
                 for item in available_items:
                     current_rate_val = st.session_state.mandi_rates.get(item, 0.0)
                     updated_rates[item] = st.number_input(f"Rate for {item}:", min_value=0.0, value=float(current_rate_val), step=1.0, key=f"r_in_{item}")
-               
+                
+                save_rates = st.form_submit_button("Save & Update Rates 💾")
+                if save_rates:
+                    for item, r_val in updated_rates.items():
+                        st.session_state.mandi_rates[item] = r_val
+                    payload = {
+                        "action": "update_rates",
