@@ -217,15 +217,12 @@ else:
                     except Exception as e:
                         st.error(f"❌ Connection Error: {str(e)}")
 
-        # TAB 3: Today's Mandi Rates Form (सुपर सिंपल और एरर-फ्री वर्शन)
+        # TAB 3: Today's Mandi Rates Form (बिना किसी जटिल लॉजिक या कंडीशन्स के - सुपर क्लीन वर्शन)
         with tab3:
             st.subheader("💰 Aaj Ke Mandi Rates Set Karein")
             with st.form("rates_form"):
                 updated_rates = {}
                 for item in available_items:
-                    current_rate_val = 0.0
-                    
-                    # बिना try-except ब्लॉक के सीधा सुरक्षित चेकिंग
-                    if not filtered_df.empty:
-                        match = filtered_df[filtered_df["Item"] == item]
-                        if not match.empty:
+                    current_rate_val = st.session_state.mandi_rates.get(item, 0.0)
+                    updated_rates[item] = st.number_input(f"Rate for {item}:", min_value=0.0, value=float(current_rate_val), step=1.0, key=f"r_in_{item}")
+               
