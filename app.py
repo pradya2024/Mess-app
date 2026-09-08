@@ -7,7 +7,7 @@ import json
 # Page Configuration
 st.set_page_config(page_title="ANNAPURNA VEGETABLE SHOP", page_icon="🥦", layout="centered")
 
-# --- CUSTOM CSS FOR SHOP BRANDING & BLACK TEXT VISIBILITY ---
+# --- CUSTOM CSS FOR SHOP BRANDING ---
 st.markdown("""
 <style>
     .stApp, p, label, .stMarkdown, .stSelectbox, div[data-baseweb="select"] {
@@ -141,20 +141,30 @@ else:
         selected_date = st.date_input("Filter Data By Date:", value=date.today())
         formatted_selected_date = selected_date.strftime("%Y-%m-%d")
         
-        # 🚩 FIX 1: ISO formats (like 2026-09-07T18:30:00.000Z) ko standard YYYY-MM-DD me badalna
+        # 🚩 FIX: ISO Timestamp (UTC) को क्लीन करके Local Date (YYYY-MM-DD) में कन्वर्ट करना
         if not df.empty and "Date" in df.columns:
             def clean_date_string(date_val):
-                dt_str = str(date_val).strip()
-                if "T" in dt_str:
-                    dt_str = dt_str.split("T")[0]
-                elif " " in dt_str:
-                    dt_str = dt_str.split(" ")[0]
-                return dt_str
+                try:
+                    dt_str = str(date_val).strip()
+                    # अगर ISO टाइमस्टैम्प है (e.g., 2026-09-07T18:30:00.000Z)
+                    if "T" in dt_str:
+                        # Pandas to_datetime से UTC को लोकल टाइम में पार्स करना
+                        parsed_dt = pd.to_datetime(dt_str)
+                        return parsed_dt.strftime("%Y-%m-%d")
+                    elif " " in dt_str:
+                        return dt_str.split(" ")[0]
+                    return dt_str
+                except:
+                    return str(date_val)[:10]
 
             df["Date_Clean"] = df["Date"].apply(clean_date_string)
             filtered_df = df[df["Date_Clean"] == formatted_selected_date].reset_index(drop=True)
         else:
             filtered_df = df.copy()
+
+        # अगर चुनी हुई डेट पर डेटा नहीं मिलता, तो एडमिन को समझाने के लिए एक हेल्प बॉक्स
+        if filtered_df.empty and not df.empty and "Date" in df.columns:
+            st.info(f"💡 यदि आज की डिमांड नहीं दिख रही है, तो कैलेंडर में **एक दिन पीछे की तारीख ({date.today().replace(day=date.today().day-1).strftime('%Y-%m-%d')})** चुनकर देखें। गूगल शीट टाइमज़ोन के कारण कभी-कभी डेटा कल की तारीख में सेव हो जाता है।")
 
         st.info(f"📅 Abhi niche ka saara data sirf date: **{formatted_selected_date}** ka dikhai de raha hai.")
         st.markdown("---")
@@ -169,7 +179,6 @@ else:
             else:
                 filtered_df["Qty"] = pd.to_numeric(filtered_df["Qty"], errors='coerce').fillna(0)
                 
-                # Pivot table layout matrix safely
                 try:
                     matrix_df = filtered_df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
                     matrix_df['Total Qty'] = matrix_df.sum(axis=1)
@@ -211,18 +220,3 @@ else:
                             st.success(f"✅ Success: '{new_item_name}' को लिस्ट में जोड़ दिया गया है!")
                             st.rerun()
                         else:
-                            st.error("⚠️ Server Error! Item add nahi ho paya.")
-                    except Exception as e:
-                        st.error(f"❌ Connection Error: {str(e)}")
-
-        # TAB 3: Today's Mandi Rates (⭐ FIX: Ab data empty hone par bhi ye tab humesha chalega)
-        with tab3:
-            st.subheader("💰 Aaj Ke Mandi Rates Set Karein")
-            st.write(f"Niche sabhi items ke rate bharein (Date: **{formatted_selected_date}**):")
-            
-            with st.form("rates_form"):
-                updated_rates = {}
-                for item in available_items:
-                    # Default base value
-                    current_rate_val = 0.0
-                    
