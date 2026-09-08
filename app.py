@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 import requests
 import json
 
@@ -137,39 +137,54 @@ else:
                 
     # ---- 📊 ADMIN (OWNER) LOGGED IN ----
     else:
+        # 🚩 NEW FIX: Sabse upar global date filter calendar jo poore data ko filter karega
+        st.markdown("### 📅 Select Working Date")
+        selected_date = st.date_input("Filter Data By Date:", value=date.today())
+        formatted_selected_date = selected_date.strftime("%Y-%m-%d")
+        
+        # Pure database ko pehle hi chuni hui date se filter kar lena
+        if not df.empty and "Date" in df.columns:
+            # Handle standard string conversions cleanly
+            df["Date"] = df["Date"].astype(str).str.strip()
+            filtered_df = df[df["Date"] == formatted_selected_date].reset_index(drop=True)
+        else:
+            filtered_df = df.copy()
+
+        st.info(f"📅 Abhi niche ka saara data sirf date: **{formatted_selected_date}** ka dikhai de raha hai.")
+        st.markdown("---")
+
         tab1, tab2, tab3, tab4 = st.tabs(["🛒 Mandi Packing List", "➕ Add New Sabji/Fruit", "💰 Today's Mandi Rates", "💵 Alag-Alag Mess Bills"])
         
-        # TAB 1: Packing List Matrix with Download Button
+        # TAB 1: Packing List Matrix filtered by date
         with tab1:
             st.subheader("🛒 Mandi Purchase Consolidated List")
-            if df.empty or len(df) == 0:
-                st.info("Abhi tak kisi bhi mess ne demand nahi bheji hai.")
+            if filtered_df.empty or len(filtered_df) == 0:
+                st.info(f"Chuni hui date ({formatted_selected_date}) ke liye abhi tak kisi bhi mess ne demand nahi bheji hai.")
             else:
-                try:
-                    df["Qty"] = pd.to_numeric(df["Qty"], errors='coerce').fillna(0)
-                    matrix_df = df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
-                    matrix_df['Total Qty'] = matrix_df.sum(axis=1)
-                    matrix_df = matrix_df.reset_index()
-                    matrix_df.columns.name = None
-                    matrix_df = matrix_df.rename(columns={'Item': 'Item Name'})
-                    matrix_df.index = matrix_df.index + 1
-                    matrix_df.index.name = "Sl No"
-                    matrix_df = matrix_df.reset_index()
-                    
-                    st.write("📊 **Mandi Packing Matrix (Item Wise Mess Breakdown & Total):**")
-                    
-                    mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
-                        data=mandi_csv_data,
-                        file_name=f"Mandi_Packing_List_{datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-                    st.markdown(" ") 
-                    st.dataframe(matrix_df)
-                except Exception as e:
-                    st.error(f"Packing list layout error: {str(e)}")
+                filtered_df["Qty"] = pd.to_numeric(filtered_df["Qty"], errors='coerce').fillna(0)
+                
+                # Matrix Table Layout Setup safely
+                matrix_df = filtered_df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
+                matrix_df['Total Qty'] = matrix_df.sum(axis=1)
+                matrix_df = matrix_df.reset_index()
+                matrix_df.columns.name = None
+                matrix_df = matrix_df.rename(columns={'Item': 'Item Name'})
+                matrix_df.index = matrix_df.index + 1
+                matrix_df.index.name = "Sl No"
+                matrix_df = matrix_df.reset_index()
+                
+                st.write(f"📊 **Mandi Packing Matrix for {formatted_selected_date}:**")
+                
+                mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
+                    data=mandi_csv_data,
+                    file_name=f"Mandi_Packing_List_{formatted_selected_date}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+                st.markdown(" ") 
+                st.dataframe(matrix_df)
 
         # TAB 2: Nayi Sabji Add
         with tab2:
@@ -202,25 +217,8 @@ else:
                     st.session_state.mandi_rates = updated_rates
                     st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
 
-        # TAB 4: Final Split Billing (🚩 CRASH PROOF FIXED VERSION)
+        # TAB 4: Final Split Billing (🚩 NEW SIMPLE CODE STRUCTURE)
         with tab4:
             st.subheader("💵 Alag-Alag Mess Wise Final Bills")
-            
-            # 1. Safe copy and mathematical calculations
-            calc_df = df.copy()
-            calc_df["Qty"] = pd.to_numeric(calc_df["Qty"], errors='coerce').fillna(0)
-            calc_df["Rate"] = calc_df["Item"].map(st.session_state.mandi_rates).fillna(0)
-            calc_df["Total"] = calc_df["Qty"] * calc_df["Rate"]
-            
-            # --- SUMMARY OVERVIEW DISPLAY ---
-            st.write("📊 **Sabhi Mess Ka Total Kharcha:**")
-            if not calc_df.empty:
-                summary_df = calc_df.groupby("Mess")["Total"].sum().reset_index()
-                summary_df.columns = ["Mess Name", "Total Bill (₹)"]
-                summary_df.index = summary_df.index + 1
-                st.dataframe(summary_df)
-            else:
-                st.info("Abhi tak koi data received nahi hua hai.")
-
-            st.markdown("---")
-            
+            if filtered_df.empty or len(filtered_df) == 0:
+                st.info(f"Chuni hui date ({formatted_selected_date}) ke liye koi bills available nahi hain.")
