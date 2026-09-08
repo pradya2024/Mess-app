@@ -137,17 +137,22 @@ else:
                 
     # ---- 📊 ADMIN (OWNER) LOGGED IN ----
     else:
-        # 🚩 NEW FIX: Sabse upar global date filter calendar jo poore data ko filter karega
         st.markdown("### 📅 Select Working Date")
         selected_date = st.date_input("Filter Data By Date:", value=date.today())
         formatted_selected_date = selected_date.strftime("%Y-%m-%d")
         
-        # Pure database ko pehle hi chuni hui date se filter kar lena
+        # 🚩 FIX: Date Strings को अच्छे से क्लीन करके मैच करना (ताकि टाइमज़ोन या स्पेस की दिक्कत न हो)
         if not df.empty and "Date" in df.columns:
-            df["Date"] = df["Date"].astype(str).str.strip()
-            filtered_df = df[df["Date"] == formatted_selected_date].reset_index(drop=True)
+            # ISO format या timestamp में से सिर्फ YYYY-MM-DD निकालना
+            df["Date_Clean"] = df["Date"].astype(str).str.slice(0, 10).str.strip()
+            filtered_df = df[df["Date_Clean"] == formatted_selected_date].reset_index(drop=True)
         else:
             filtered_df = df.copy()
+
+        # Debugging के लिए: अगर लिस्ट खाली है तो एडलिम को दिखाना कि शीट में कौन सी डेट्स मौजूद हैं
+        if filtered_df.empty and not df.empty and "Date" in df.columns:
+            unique_dates = df["Date"].unique()
+            st.warning(f"⚠️ शीट में आज ({formatted_selected_date}) की कोई डिमांड नहीं मिली। उपलब्ध तारीखें: {list(unique_dates)}")
 
         st.info(f"📅 Abhi niche ka saara data sirf date: **{formatted_selected_date}** ka dikhai de raha hai.")
         st.markdown("---")
@@ -212,13 +217,8 @@ else:
             with st.form("rates_form"):
                 updated_rates = {}
                 for item in available_items:
-                    # Agar pehle se koi rate set hai database me toh wo fetch karein, nahi toh session state use karein
                     current_rate_val = 0.0
                     if not filtered_df.empty and "Item" in filtered_df.columns:
                         match = filtered_df[filtered_df["Item"] == item]
                         if not match.empty and "Rate" in match.columns:
                             try:
-                                current_rate_val = float(match.iloc[0]["Rate"])
-                            except:
-                                current_rate_val = 0.0
-                    
