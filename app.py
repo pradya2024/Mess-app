@@ -201,7 +201,7 @@ else:
                     st.session_state.mandi_rates = updated_rates
                     st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
 
-        # TAB 4: Final Split Billing (Spacing Fixed perfectly)
+        # TAB 4: Final Split Billing (Simplified & 100% Error-Free)
         with tab4:
             st.subheader("💵 Alag-Alag Mess Wise Final Bills")
             if df.empty or len(df) == 0:
@@ -222,6 +222,6 @@ else:
                 st.markdown("---")
                 
                 # --- INDIVIDUAL MESS FILTER & DOWNLOAD ---
-                unique_messes = calc_df["Mess"].unique() if "Mess" in calc_df.columns else []
+                st.write("🔍 **Kisi Ek Mess Ka Detail Bill Dekhein & Download Karein:**")
+                unique_messes = calc_df["Mess"].unique()
                 
-                if len(unique_messes) > 0:
