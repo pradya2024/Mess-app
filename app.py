@@ -222,4 +222,4 @@ else:
                     for item, r_val in updated_rates.items():
                         st.session_state.mandi_rates[item] = r_val
                     payload = {
-                        "action": "update_rates",
+                        "action": "update_rates"
