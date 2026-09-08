@@ -141,14 +141,12 @@ else:
         selected_date = st.date_input("Filter Data By Date:", value=date.today())
         formatted_selected_date = selected_date.strftime("%Y-%m-%d")
         
-        # 🚩 FIX: ISO Timestamp (UTC) को क्लीन करके Local Date (YYYY-MM-DD) में कन्वर्ट करना
+        # ISO Timestamp (UTC) को क्लीन करके Local Date (YYYY-MM-DD) में बदलना
         if not df.empty and "Date" in df.columns:
             def clean_date_string(date_val):
                 try:
                     dt_str = str(date_val).strip()
-                    # अगर ISO टाइमस्टैम्प है (e.g., 2026-09-07T18:30:00.000Z)
                     if "T" in dt_str:
-                        # Pandas to_datetime से UTC को लोकल टाइम में पार्स करना
                         parsed_dt = pd.to_datetime(dt_str)
                         return parsed_dt.strftime("%Y-%m-%d")
                     elif " " in dt_str:
@@ -162,9 +160,10 @@ else:
         else:
             filtered_df = df.copy()
 
-        # अगर चुनी हुई डेट पर डेटा नहीं मिलता, तो एडमिन को समझाने के लिए एक हेल्प बॉक्स
+        # अगर आज का डेटा खाली है तो एडमिन के लिए हेल्प बॉक्स
         if filtered_df.empty and not df.empty and "Date" in df.columns:
-            st.info(f"💡 यदि आज की डिमांड नहीं दिख रही है, तो कैलेंडर में **एक दिन पीछे की तारीख ({date.today().replace(day=date.today().day-1).strftime('%Y-%m-%d')})** चुनकर देखें। गूगल शीट टाइमज़ोन के कारण कभी-कभी डेटा कल की तारीख में सेव हो जाता है।")
+            prev_date_str = date.today().replace(day=max(1, date.today().day-1)).strftime('%Y-%m-%d')
+            st.info(f"💡 यदि आज की डिमांड नहीं दिख रही है, तो कैलेंडर में **एक दिन पीछे की तारीख ({prev_date_str})** चुनकर देखें।")
 
         st.info(f"📅 Abhi niche ka saara data sirf date: **{formatted_selected_date}** ka dikhai de raha hai.")
         st.markdown("---")
@@ -178,7 +177,6 @@ else:
                 st.info(f"Chuni hui date ({formatted_selected_date}) ke liye abhi tak kisi bhi mess ne demand nahi bheji hai.")
             else:
                 filtered_df["Qty"] = pd.to_numeric(filtered_df["Qty"], errors='coerce').fillna(0)
-                
                 try:
                     matrix_df = filtered_df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
                     matrix_df['Total Qty'] = matrix_df.sum(axis=1)
@@ -220,3 +218,9 @@ else:
                             st.success(f"✅ Success: '{new_item_name}' को लिस्ट में जोड़ दिया गया है!")
                             st.rerun()
                         else:
+                            st.error("⚠️ Server Error! Item add nahi ho paya.")
+                    except Exception as e:
+                        st.error(f"❌ Connection Error: {str(e)}")
+
+        # TAB 3: Today's Mandi Rates Form
+        with tab3:
