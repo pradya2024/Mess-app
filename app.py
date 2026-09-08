@@ -144,7 +144,6 @@ else:
         
         # Pure database ko pehle hi chuni hui date se filter kar lena
         if not df.empty and "Date" in df.columns:
-            # Handle standard string conversions cleanly
             df["Date"] = df["Date"].astype(str).str.strip()
             filtered_df = df[df["Date"] == formatted_selected_date].reset_index(drop=True)
         else:
@@ -190,35 +189,36 @@ else:
         with tab2:
             st.subheader("➕ Nayi Sabji ya Fruit Ka Name Jodein")
             with st.form("add_item_form", clear_on_submit=True):
-                new_item_name = st.text_input("Nayi Sabji/Fruit Ka Naam Likhein:").strip()
-                add_submit = st.form_submit_button("Add Item to List 📝")
+                new_item_name = st.text_input("Enter New Item Name (e.g. Bhindi, Gobi):").strip()
+                add_submit = st.form_submit_button("Add Item to Database ➕")
+                
                 if add_submit and new_item_name:
-                    if new_item_name in available_items:
-                        st.warning("⚠️ Yeh naam pehle se list mein maujood hai.")
-                    else:
-                        payload = {"action": "add_item", "Item_Name": new_item_name}
-                        try:
-                            res = requests.post(SCRIPT_URL, data=json.dumps(payload))
-                            if res.status_code == 200:
-                                st.success(f"🎉 '{new_item_name}' ko list mein jod diya gaya hai!")
-                                st.rerun()
-                        except:
-                            st.error("❌ Add karne mein dikkat aayi.")
+                    payload = {"action": "add_item", "item_name": new_item_name}
+                    try:
+                        res = requests.post(SCRIPT_URL, data=json.dumps(payload))
+                        if res.status_code == 200:
+                            st.success(f"✅ Success: '{new_item_name}' को लिस्ट में जोड़ दिया गया है!")
+                            st.rerun()
+                        else:
+                            st.error("⚠️ Server Error! Item add nahi ho paya.")
+                    except Exception as e:
+                        st.error(f"❌ Connection Error: {str(e)}")
 
         # TAB 3: Today's Mandi Rates
         with tab3:
-            st.subheader("📝 Mandi Se Aane Ke Baad Live Rate Update Karein")
-            with st.form("rate_form"):
+            st.subheader("💰 Aaj Ke Mandi Rates Set Karein")
+            st.write("Niche sabhi items ke rate (Per Kg / Dozen) bharein:")
+            
+            with st.form("rates_form"):
                 updated_rates = {}
                 for item in available_items:
-                    updated_rates[item] = st.number_input(f"{item} Rate (₹):", min_value=0.0, value=st.session_state.mandi_rates.get(item, 0.0), step=1.0)
-                rate_submit = st.form_submit_button("Save Today's Rates 💾")
-                if rate_submit:
-                    st.session_state.mandi_rates = updated_rates
-                    st.success("🎉 Rates save ho gaye! Naye bills dekhne ke liye agla Tab kholein.")
-
-        # TAB 4: Final Split Billing (🚩 NEW SIMPLE CODE STRUCTURE)
-        with tab4:
-            st.subheader("💵 Alag-Alag Mess Wise Final Bills")
-            if filtered_df.empty or len(filtered_df) == 0:
-                st.info(f"Chuni hui date ({formatted_selected_date}) ke liye koi bills available nahi hain.")
+                    # Agar pehle se koi rate set hai database me toh wo fetch karein, nahi toh session state use karein
+                    current_rate_val = 0.0
+                    if not filtered_df.empty and "Item" in filtered_df.columns:
+                        match = filtered_df[filtered_df["Item"] == item]
+                        if not match.empty and "Rate" in match.columns:
+                            try:
+                                current_rate_val = float(match.iloc[0]["Rate"])
+                            except:
+                                current_rate_val = 0.0
+                    
