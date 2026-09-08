@@ -7,7 +7,7 @@ import json
 # Page Configuration
 st.set_page_config(page_title="ANNAPURNA VEGETABLE SHOP", page_icon="🥦", layout="centered")
 
-# --- CUSTOM CSS FOR SHOP BRANDING & BLACK TEXT VISIBILITY (LIGHT & DARK MODE) ---
+# --- CUSTOM CSS FOR SHOP BRANDING & BLACK TEXT VISIBILITY ---
 st.markdown("""
 <style>
     .stApp, p, label, .stMarkdown, .stSelectbox, div[data-baseweb="select"] {
@@ -61,7 +61,7 @@ try:
         df = pd.DataFrame(raw_demands)
     else:
         df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
-except:
+except Exception as e:
     available_items = ["Aloo", "Tamatar", "Pyaj"]
     df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
 
@@ -141,53 +141,60 @@ else:
         selected_date = st.date_input("Filter Data By Date:", value=date.today())
         formatted_selected_date = selected_date.strftime("%Y-%m-%d")
         
-        # Date Strings को अच्छे से क्लीन करके मैच करना
+        # 🚩 FIX 1: ISO formats (like 2026-09-07T18:30:00.000Z) ko standard YYYY-MM-DD me badalna
         if not df.empty and "Date" in df.columns:
-            df["Date_Clean"] = df["Date"].astype(str).str.slice(0, 10).str.strip()
+            def clean_date_string(date_val):
+                dt_str = str(date_val).strip()
+                if "T" in dt_str:
+                    dt_str = dt_str.split("T")[0]
+                elif " " in dt_str:
+                    dt_str = dt_str.split(" ")[0]
+                return dt_str
+
+            df["Date_Clean"] = df["Date"].apply(clean_date_string)
             filtered_df = df[df["Date_Clean"] == formatted_selected_date].reset_index(drop=True)
         else:
             filtered_df = df.copy()
-
-        # Debugging के लिए warning box
-        if filtered_df.empty and not df.empty and "Date" in df.columns:
-            unique_dates = df["Date"].unique()
-            st.warning(f"⚠️ शीट में आज ({formatted_selected_date}) की कोई डिमांड नहीं मिली। उपलब्ध तारीखें: {list(unique_dates)}")
 
         st.info(f"📅 Abhi niche ka saara data sirf date: **{formatted_selected_date}** ka dikhai de raha hai.")
         st.markdown("---")
 
         tab1, tab2, tab3, tab4 = st.tabs(["🛒 Mandi Packing List", "➕ Add New Sabji/Fruit", "💰 Today's Mandi Rates", "💵 Alag-Alag Mess Bills"])
         
-        # TAB 1: Packing List Matrix filtered by date
+        # TAB 1: Packing List Matrix
         with tab1:
             st.subheader("🛒 Mandi Purchase Consolidated List")
-            if filtered_df.empty or len(filtered_df) == 0:
+            if filtered_df.empty:
                 st.info(f"Chuni hui date ({formatted_selected_date}) ke liye abhi tak kisi bhi mess ne demand nahi bheji hai.")
             else:
                 filtered_df["Qty"] = pd.to_numeric(filtered_df["Qty"], errors='coerce').fillna(0)
                 
-                # Matrix Table Layout Setup safely
-                matrix_df = filtered_df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
-                matrix_df['Total Qty'] = matrix_df.sum(axis=1)
-                matrix_df = matrix_df.reset_index()
-                matrix_df.columns.name = None
-                matrix_df = matrix_df.rename(columns={'Item': 'Item Name'})
-                matrix_df.index = matrix_df.index + 1
-                matrix_df.index.name = "Sl No"
-                matrix_df = matrix_df.reset_index()
-                
-                st.write(f"📊 **Mandi Packing Matrix for {formatted_selected_date}:**")
-                
-                mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
-                    data=mandi_csv_data,
-                    file_name=f"Mandi_Packing_List_{formatted_selected_date}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-                st.markdown(" ") 
-                st.dataframe(matrix_df)
+                # Pivot table layout matrix safely
+                try:
+                    matrix_df = filtered_df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
+                    matrix_df['Total Qty'] = matrix_df.sum(axis=1)
+                    matrix_df = matrix_df.reset_index()
+                    matrix_df.columns.name = None
+                    matrix_df = matrix_df.rename(columns={'Item': 'Item Name'})
+                    matrix_df.index = matrix_df.index + 1
+                    matrix_df.index.name = "Sl No"
+                    matrix_df = matrix_df.reset_index()
+                    
+                    st.write(f"📊 **Mandi Packing Matrix for {formatted_selected_date}:**")
+                    
+                    mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
+                        data=mandi_csv_data,
+                        file_name=f"Mandi_Packing_List_{formatted_selected_date}.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+                    st.markdown(" ") 
+                    st.dataframe(matrix_df)
+                except Exception as ex:
+                    st.error(f"Matrix generate karne me samasya: {str(ex)}")
+                    st.dataframe(filtered_df[["Date", "Mess", "Item", "Qty"]])
 
         # TAB 2: Nayi Sabji Add
         with tab2:
@@ -208,19 +215,14 @@ else:
                     except Exception as e:
                         st.error(f"❌ Connection Error: {str(e)}")
 
-        # TAB 3: Today's Mandi Rates
+        # TAB 3: Today's Mandi Rates (⭐ FIX: Ab data empty hone par bhi ye tab humesha chalega)
         with tab3:
             st.subheader("💰 Aaj Ke Mandi Rates Set Karein")
-            st.write("Niche sabhi items ke rate (Per Kg / Dozen) bharein:")
+            st.write(f"Niche sabhi items ke rate bharein (Date: **{formatted_selected_date}**):")
             
             with st.form("rates_form"):
                 updated_rates = {}
                 for item in available_items:
+                    # Default base value
                     current_rate_val = 0.0
-                    if not filtered_df.empty and "Item" in filtered_df.columns:
-                        match = filtered_df[filtered_df["Item"] == item]
-                        if not match.empty and "Rate" in match.columns:
-                            try:
-                                current_rate_val = float(match.iloc[0]["Rate"])
-                            except:
-                                current_rate_val = 0.0
+                    
