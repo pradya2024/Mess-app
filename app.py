@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import requests
 import json
 
@@ -32,6 +32,12 @@ USER_CREDENTIALS = {
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'username' not in st.session_state: st.session_state.username = ""
 if 'mandi_rates' not in st.session_state: st.session_state.mandi_rates = {}
+
+# 🚩 भारतीय समय (IST) निकालने का फुलप्रूफ तरीका (UTC + 5:30 Hours)
+def get_ist_now():
+    utc_now = datetime.utcnow()
+    ist_now = utc_now + timedelta(hours=5, minutes=30)
+    return ist_now
 
 try:
     response = requests.get(SCRIPT_URL, timeout=5)
@@ -74,7 +80,9 @@ else:
             item = st.selectbox("Select Item:", available_items)
             qty = st.number_input("Quantity:", min_value=1.0, step=1.0)
             if st.form_submit_button("Submit Demand 🚀"):
-                payload = {"action": "submit_demand", "Date": datetime.now().strftime("%Y-%m-%d"), "Mess": current_mess, "Item": item, "Qty": qty, "Rate": 0, "Total": 0}
+                # 🚩 FIX: अब सबमिट करते समय IST (भारतीय समय) की शुद्ध तारीख ही डेटाबेस में जाएगी
+                current_ist_date = get_ist_now().strftime("%Y-%m-%d")
+                payload = {"action": "submit_demand", "Date": current_ist_date, "Mess": current_mess, "Item": item, "Qty": qty, "Rate": 0, "Total": 0}
                 try:
                     res = requests.post(SCRIPT_URL, data=json.dumps(payload))
                     if res.status_code == 200:
@@ -87,17 +95,29 @@ else:
                     
     # ---- 📊 ADMIN SCREEN ----
     else:
-        selected_date = st.date_input("Select Date:", value=date.today())
-        formatted_date = selected_date.strftime("%Y-%m-%d")
+        # डिफ़ॉल्ट रूप से आज की भारतीय तारीख चुनेगा
+        today_ist = get_ist_now().date()
+        selected_date = st.date_input("Select Date:", value=today_ist)
         
+        # 🚩 स्ट्रिंग पार्सर: गूगल शीट की तारीखों को क्लीन करके मैच करना
         if not df.empty and "Date" in df.columns:
-            df["Date_Clean"] = df["Date"].astype(str).str.strip().str.slice(0, 10)
-            filtered_df = df[df["Date_Clean"] == formatted_date].reset_index(drop=True)
+            def to_clean_date(val):
+                try:
+                    # ISO या टाइमस्टैम्प से सिर्फ YYYY-MM-DD निकालना
+                    return pd.to_datetime(str(val).strip()).date()
+                except Exception:
+                    try:
+                        return datetime.strptime(str(val).strip()[:10], "%Y-%m-%d").date()
+                    except Exception:
+                        return None
+
+            df["Parsed_Date"] = df["Date"].apply(to_clean_date)
+            filtered_df = df[df["Parsed_Date"] == selected_date].reset_index(drop=True)
         else:
             filtered_df = df.copy()
 
         if filtered_df.empty and not df.empty:
-            st.info("💡 Agar aaj data nahi dikh raha, toh calendar me ek din peeche ki date chun kar dekhein.")
+            st.info("💡 Agar aaj data nahi dikh raha, toh calendar me ek din peeche ya aage ki date chun kar dekhein (Timezone adjustment ke liye).")
 
         tab1, tab2, tab3, tab4 = st.tabs(["🛒 Packing List", "➕ Add Sabji", "💰 Mandi Rates", "💵 Mess Bills"])
         
@@ -139,7 +159,7 @@ else:
                 if st.form_submit_button("Save Rates 💾"):
                     for item, r_val in updated_rates.items(): st.session_state.mandi_rates[item] = r_val
                     try:
-                        res = requests.post(SCRIPT_URL, data=json.dumps({"action": "update_rates", "Date": formatted_date, "rates": updated_rates}))
+                        res = requests.post(SCRIPT_URL, data=json.dumps({"action": "update_rates", "Date": selected_date.strftime("%Y-%m-%d"), "rates": updated_rates}))
                         if res.status_code == 200:
                             st.success("✅ Rates Saved!")
                         else:
