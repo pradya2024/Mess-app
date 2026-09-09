@@ -105,7 +105,7 @@ else:
             df["Month_Year"] = df["Date"].astype(str).str.slice(0, 7)
         else: filtered_df = df.copy()
 
-        tab1, tab2, tab3, tab4 = st.tabs(["🛒 Packing List", "➕ Add Sabji", "💰 Mandi Rates & Qty", "💵 Mess Bills & Print"])
+        tab1, tab2, tab3, tab4 = st.tabs(["🛒 Packing List", "➕ Add Sabji", "💰 Edit Rates & Mess Qty", "💵 Mess Bills & Print"])
         
         # TAB 1: Packing List Matrix (Sl No 1 se start)
         with tab1:
@@ -134,57 +134,59 @@ else:
                         else: st.error("⚠️ Error!")
                     except Exception: st.error("❌ Error!")
 
-        # TAB 3: Rates & Quantity Edit Tab
+        # 🚩 TAB 3: PARTICULAR MESS SELECT KARKE RATES AUR QUANTITY BADALNA
         with tab3:
-            st.subheader("💰 Aaj Ke Rates Aur Quantity Set Karein")
-            st.info("Aap yahan se kisi bhi item ka Rate aur ordered Quantity dono badal sakte hain.")
-            with st.form("rates_qty_form"):
-                updated_rates = {}
-                updated_qtys = {}
-                for item in available_items:
-                    val = st.session_state.mandi_rates.get(item, 0.0)
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        updated_rates[item] = st.number_input(f"Rate for {item}:", min_value=0.0, value=float(val), step=1.0, key=f"r_{item}")
-                    with col2:
-                        current_qty = 0.0
-                        if not filtered_df.empty and item in filtered_df["Item"].values:
-                            current_qty = float(filtered_df[filtered_df["Item"] == item]["Qty"].sum())
-                        updated_qtys[item] = st.number_input(f"Qty for {item}:", min_value=0.0, value=current_qty, step=1.0, key=f"q_{item}")
-                
-                if st.form_submit_button("Save Rates & Quantity 💾"):
-                    for item, r_val in updated_rates.items(): st.session_state.mandi_rates[item] = r_val
-                    payload = {"action": "update_rates_and_qty", "Date": formatted_date, "rates": updated_rates, "qtys": updated_qtys}
-                    try:
-                        res = requests.post(SCRIPT_URL, data=json.dumps(payload))
-                        st.success("✅ Rates and Quantity Updated successfully!") if res.status_code == 200 else st.warning("⚠️ Local save hua.")
-                    except Exception: st.error("❌ Error!")
-
-        # TAB 4: Bills, Monthly Summary & Custom Branded CSV Download
-        with tab4:
-            st.subheader("💵 All Mess Bills & Invoices")
+            st.subheader("💰 Particular Mess Ka Rate Aur Qty Update Karein")
             
-            # 📊 Monthly Filter Option
-            view_mode = st.radio("View Mode:", ["Daily Bill", "Monthly Summary"])
+            mess_list = list(name_mapping.values())
+            selected_edit_mess = st.selectbox("Kis Mess ka details badalna chahte hain?", mess_list, key="edit_mess_select")
             
-            working_df = filtered_df.copy()
-            if view_mode == "Monthly Summary" and not df.empty:
-                current_month = formatted_date[:7]
-                working_df = df[df["Month_Year"] == current_month].reset_index(drop=True)
+            # Chune hue mess ka data nikalna
+            mess_specific_df = filtered_df[filtered_df["Mess"] == selected_edit_mess].reset_index(drop=True)
             
-            if working_df.empty: st.info("No bills available for selected period.")
+            if mess_specific_df.empty:
+                st.warning(f"⚠️ Aaj ki date me {selected_edit_mess} ne koi demand submit nahi ki hai.")
             else:
-                working_df["Qty"] = pd.to_numeric(working_df["Qty"], errors='coerce').fillna(0)
-                working_df["Rate"] = working_df["Item"].map(st.session_state.mandi_rates).fillna(0.0)
-                working_df["Total"] = working_df["Qty"] * working_df["Rate"]
-                
-                st.write("### 📋 Total Bill Summary")
-                sum_df = working_df.groupby("Mess")["Total"].sum().reset_index()
-                sum_df.index = sum_df.index + 1
-                sum_df.index.name = "Sl No"
-                st.dataframe(sum_df.reset_index(), use_container_width=True)
-                
-                st.markdown("---")
-                st.write("### 🔍 Detailed Bill & Print Invoice")
-                sel_mess = st.selectbox("Select Mess For Bill Download/Print:", list(name_mapping.values()))
-                
+                st.write(f"✍️ **{selected_edit_mess}** ke items niche edit karein:")
+                with st.form("mess_rates_qty_form"):
+                    updated_rates = {}
+                    updated_qtys = {}
+                    
+                    for idx, row in mess_specific_df.iterrows():
+                        item_name = row["Item"]
+                        default_qty = float(row["Qty"])
+                        
+                        # Pehle se save rate nikalna
+                        try: default_rate = float(row.get("Rate", 0.0))
+                        except: default_rate = 0.0
+                        if default_rate == 0.0:
+                            default_rate = st.session_state.mandi_rates.get(item_name.split(" ")[0], 0.0)
+                        
+                        st.markdown(f"##### 🥦 {item_name}")
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            updated_rates[item_name] = st.number_input(f"Rate (₹):", min_value=0.0, value=float(default_rate), step=1.0, key=f"r_{selected_edit_mess}_{idx}")
+                        with col2:
+                            updated_qtys[item_name] = st.number_input(f"Quantity:", min_value=0.0, value=default_qty, step=1.0, key=f"q_{selected_edit_mess}_{idx}")
+                        st.markdown("---")
+                    
+                    if st.form_submit_button("Update & Save Data 💾"):
+                        # Local session state rates update karein
+                        for item, r_val in updated_rates.items():
+                            base_item = item.split(" ")[0]
+                            st.session_state.mandi_rates[base_item] = r_val
+                        
+                        # Global updates spreadsheet endpoint par raw payload push karein
+                        payload = {
+                            "action": "update_mess_data",
+                            "Date": formatted_date,
+                            "Mess": selected_edit_mess,
+                            "rates": updated_rates,
+                            "qtys": updated_qtys
+                        }
+                        try:
+                            res = requests.post(SCRIPT_URL, data=json.dumps(payload))
+                            if res.status_code == 200:
+                                st.success(f"✅ Success: Only {selected_edit_mess} ka Bill aur Qty update ho gaya!")
+                                st.rerun()
+                            else: st.warning("⚠️ Local screen par badla, par server error mila.")
