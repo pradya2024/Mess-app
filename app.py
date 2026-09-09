@@ -10,216 +10,142 @@ st.set_page_config(page_title="ANNAPURNA VEGETABLE SHOP", page_icon="🥦", layo
 # --- CUSTOM CSS FOR SHOP BRANDING ---
 st.markdown("""
 <style>
-    .stApp, p, label, .stMarkdown, .stSelectbox, div[data-baseweb="select"] {
-        color: #222222 !important;
-    }
+    .stApp, p, label, .stMarkdown, .stSelectbox, div[data-baseweb="select"] { color: #222222 !important; }
     .shop-header {
         background: linear-gradient(135deg, #FF9800, #F57C00);
-        color: white !important; padding: 25px; border-radius: 15px;
-        text-align: center; margin-bottom: 25px;
-        box-shadow: 0px 4px 15px rgba(0,0,0,0.1);
+        color: white !important; padding: 20px; border-radius: 12px;
+        text-align: center; margin-bottom: 20px;
     }
-    .shop-header h1 { color: white !important; font-size: 28px !important; font-weight: bold !important; margin: 0; }
-    .shop-header p { color: #FFF3E0 !important; font-size: 16px !important; margin: 5px 0 0 0; }
-    button[data-baseweb="tab"] p {
-        color: #111111 !important;
-        font-weight: bold !important;
-        font-size: 15px !important;
-    }
-    button[aria-selected="true"] p {
-        color: #E65100 !important;
-        border-bottom: 2px solid #E65100;
-    }
+    .shop-header h1 { color: white !important; font-size: 24px !important; margin: 0; }
 </style>
 """, unsafe_allow_html=True)
 
-# 🟢 APNI GOOGLE WEB APP KI LINK YAHAN PASTE KAREIN
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxbbUBdxj__qToZfF33nT2E3E464K9i3v6S9vDSaxLx4ll8nwNrY8gDaDQqN2sfJbQ2/exec"
 
-# Shop Main Banner on Top
-st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply Demand & Billing System</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply System</p></div>', unsafe_allow_html=True)
 
-# --- LOGIN CREDENTIALS ---
 USER_CREDENTIALS = {
-    "admin": "admin123",
-    "hq": "hq123", "rtt": "rtt123", "ffc": "ffc123", 
+    "admin": "admin123", "hq": "hq123", "rtt": "rtt123", "ffc": "ffc123", 
     "fc": "fc123", "so_s": "so123", "go_s": "go123", "veg_shop": "veg123"
 }
 
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'username' not in st.session_state:
-    st.session_state.username = ""
-if 'mandi_rates' not in st.session_state:
-    st.session_state.mandi_rates = {}
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+if 'username' not in st.session_state: st.session_state.username = ""
+if 'mandi_rates' not in st.session_state: st.session_state.mandi_rates = {}
 
-# Google Script API se live database load karna
 try:
     response = requests.get(SCRIPT_URL, timeout=5)
     api_data = response.json()
     available_items = api_data.get("items", ["Aloo", "Tamatar", "Pyaj"])
     raw_demands = api_data.get("demands", [])
-    if raw_demands:
-        df = pd.DataFrame(raw_demands)
-    else:
-        df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
-except Exception as e:
+    df = pd.DataFrame(raw_demands) if raw_demands else pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
+except Exception:
     available_items = ["Aloo", "Tamatar", "Pyaj"]
     df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
 
-# Session rates ko sync karna
 for item in available_items:
-    if item not in st.session_state.mandi_rates:
-        st.session_state.mandi_rates[item] = 0.0
+    if item not in st.session_state.mandi_rates: st.session_state.mandi_rates[item] = 0.0
 
-# ==========================================
-# 🔐 SCREEN 1: LOGIN SYSTEM
-# ==========================================
 if not st.session_state.logged_in:
     st.subheader("🔒 Login Karein")
     user_input = st.text_input("Username:").strip().lower()
     pass_input = st.text_input("Password:", type="password")
-    login_btn = st.button("Login ✅")
-    
-    if login_btn:
+    if st.button("Login ✅"):
         if user_input in USER_CREDENTIALS and USER_CREDENTIALS[user_input] == pass_input:
             st.session_state.logged_in = True
             st.session_state.username = user_input
             st.rerun()
         else:
             st.error("❌ Galat Username ya Password!")
-
-# ==========================================
-# 🔓 SCREEN 2: MAIN APP
-# ==========================================
 else:
-    name_mapping = {
-        "hq": "HQ", "rtt": "RTT", "ffc": "FFC", "fc": "FC", 
-        "so_s": "SO'S", "go_s": "GO'S", "veg_shop": "VEG SHOP"
-    }
-    
+    name_mapping = {"hq": "HQ", "rtt": "RTT", "ffc": "FFC", "fc": "FC", "so_s": "SO'S", "go_s": "GO'S", "veg_shop": "VEG SHOP"}
     display_name = name_mapping.get(st.session_state.username, "ADMIN")
-    st.sidebar.write(f"👤 Logged in as: **{display_name}**")
-    
+    st.sidebar.write(f"👤 User: **{display_name}**")
     if st.sidebar.button("Logout 🚪"):
         st.session_state.logged_in = False
         st.session_state.username = ""
         st.rerun()
 
-    # ---- 🟢 MESS MANAGER LOGGED IN ----
     if st.session_state.username != "admin":
         st.subheader("📋 New Demand Form")
         current_mess = name_mapping[st.session_state.username]
-        st.info(f"Aap {current_mess} ke liye demand daal rahe hain.")
-        
         with st.form("demand_form", clear_on_submit=True):
-            item = st.selectbox("Select Sabji / Fruit Name:", available_items)
-            qty = st.number_input("Quantity (Kg / Dozen):", min_value=1.0, step=1.0)
-            submit = st.form_submit_button("Submit Demand 🚀")
-            
-            if submit:
-                payload = {
-                    "action": "submit_demand",
-                    "Date": datetime.now().strftime("%Y-%m-%d"),
-                    "Mess": current_mess,
-                    "Item": item,
-                    "Qty": qty,
-                    "Rate": 0,
-                    "Total": 0
-                }
+            item = st.selectbox("Select Item:", available_items)
+            qty = st.number_input("Quantity:", min_value=1.0, step=1.0)
+            if st.form_submit_button("Submit Demand 🚀"):
+                payload = {"action": "submit_demand", "Date": datetime.now().strftime("%Y-%m-%d"), "Mess": current_mess, "Item": item, "Qty": qty, "Rate": 0, "Total": 0}
                 try:
                     res = requests.post(SCRIPT_URL, data=json.dumps(payload))
-                    if res.status_code == 200:
-                        st.success(f"✅ Success: {item} ki {qty} Qty demand record ho gayi!")
-                        st.balloons()
-                    else:
-                        st.error(f"⚠️ Server Error! Status Code: {res.status_code}")
-                except Exception as e:
-                    st.error(f"❌ Connection Error: {str(e)}")
-                
-    # ---- 📊 ADMIN (OWNER) LOGGED IN ----
+                    st.success("✅ Demand Record Ho Gayi!") if res.status_code == 200 else st.error("⚠️ Server Error!")
+                except Exception:
+                    st.error("❌ Connection Error!")
     else:
-        st.markdown("### 📅 Select Working Date")
-        selected_date = st.date_input("Filter Data By Date:", value=date.today())
-        formatted_selected_date = selected_date.strftime("%Y-%m-%d")
+        selected_date = st.date_input("Select Date:", value=date.today())
+        formatted_date = selected_date.strftime("%Y-%m-%d")
         
-        # 🚩 फाइनल और 100% वर्किंग डेट क्लीनिंग मैकेनिज्म (बिना किसी एरर के)
         if not df.empty and "Date" in df.columns:
-            # तारीख को सीधे स्ट्रिंग बनाकर शुरुआती 10 अक्षर (YYYY-MM-DD) काटना
             df["Date_Clean"] = df["Date"].astype(str).str.strip().str.slice(0, 10)
-            filtered_df = df[df["Date_Clean"] == formatted_selected_date].reset_index(drop=True)
+            filtered_df = df[df["Date_Clean"] == formatted_date].reset_index(drop=True)
         else:
             filtered_df = df.copy()
 
-        # अगर आज का डेटा खाली है तो एडमिन के लिए हेल्प बॉक्स
-        if filtered_df.empty and not df.empty and "Date" in df.columns:
-            st.info(f"💡 यदि आज की डिमांड नहीं दिख रही है, तो कैलेंडर में एक दिन पीछे की तारीख चुनकर देखें।")
+        if filtered_df.empty and not df.empty:
+            st.info("💡 Agar aaj data nahi dikh raha, toh calendar me ek din peeche ki date chun kar dekhein.")
 
-        st.info(f"📅 Abhi data sirf date: **{formatted_selected_date}** ka dikhai de raha hai.")
-        st.markdown("---")
-
-        tab1, tab2, tab3, tab4 = st.tabs(["🛒 Mandi Packing List", "➕ Add New Sabji/Fruit", "💰 Today's Mandi Rates", "💵 Alag-Alag Mess Bills"])
+        tab1, tab2, tab3, tab4 = st.tabs(["🛒 Packing List", "➕ Add Sabji", "💰 Mandi Rates", "💵 Mess Bills"])
         
-        # TAB 1: Packing List Matrix
         with tab1:
-            st.subheader("🛒 Mandi Purchase Consolidated List")
+            st.subheader("🛒 Mandi Purchase List")
             if filtered_df.empty:
-                st.info("Chuni hui date ke liye abhi tak koi demand nahi mili hai.")
+                st.info("No demands found for this date.")
             else:
                 filtered_df["Qty"] = pd.to_numeric(filtered_df["Qty"], errors='coerce').fillna(0)
                 try:
                     matrix_df = filtered_df.pivot_table(index='Item', columns='Mess', values='Qty', aggfunc='sum', fill_value=0)
                     matrix_df['Total Qty'] = matrix_df.sum(axis=1)
-                    matrix_df = matrix_df.reset_index()
-                    matrix_df.columns.name = None
-                    matrix_df = matrix_df.rename(columns={'Item': 'Item Name'})
-                    matrix_df.index = matrix_df.index + 1
-                    matrix_df.index.name = "Sl No"
-                    matrix_df = matrix_df.reset_index()
-                    
-                    st.write(f"📊 **Mandi Packing Matrix ({formatted_selected_date}):**")
-                    mandi_csv_data = matrix_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📥 DOWNLOAD MANDI PACKING LIST (CSV)",
-                        data=mandi_csv_data,
-                        file_name=f"Mandi_Packing_List_{formatted_selected_date}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
-                    st.dataframe(matrix_df)
-                except Exception as ex:
+                    st.dataframe(matrix_df.reset_index())
+                except Exception:
                     st.dataframe(filtered_df[["Date", "Mess", "Item", "Qty"]])
 
-        # TAB 2: Nayi Sabji Add
         with tab2:
-            st.subheader("➕ Nayi Sabji ya Fruit Ka Name Jodein")
+            st.subheader("➕ Nayi Sabji Jodein")
             with st.form("add_item_form", clear_on_submit=True):
-                new_item_name = st.text_input("Enter New Item Name:").strip()
-                add_submit = st.form_submit_button("Add Item to Database ➕")
-                if add_submit and new_item_name:
-                    payload = {"action": "add_item", "item_name": new_item_name}
+                new_item = st.text_input("Item Name:").strip()
+                if st.form_submit_button("Add Item ➕") and new_item:
                     try:
-                        res = requests.post(SCRIPT_URL, data=json.dumps(payload))
-                        if res.status_code == 200:
-                            st.success(f"✅ Success: '{new_item_name}' jodh diya gaya hai!")
-                            st.rerun()
-                        else:
-                            st.error("⚠️ Server Error!")
-                    except Exception as e:
-                        st.error(f"❌ Connection Error: {str(e)}")
+                        res = requests.post(SCRIPT_URL, data=json.dumps({"action": "add_item", "item_name": new_item}))
+                        st.success("✅ Jodh diya gaya!") if res.status_code == 200 else st.error("⚠️ Error!")
+                    except Exception:
+                        st.error("❌ Error!")
 
-        # TAB 3: Today's Mandi Rates Form
         with tab3:
-            st.subheader("💰 Aaj Ke Mandi Rates Set Karein")
+            st.subheader("💰 Aaj Ke Rates Set Karein")
             with st.form("rates_form"):
                 updated_rates = {}
                 for item in available_items:
-                    current_rate_val = st.session_state.mandi_rates.get(item, 0.0)
-                    updated_rates[item] = st.number_input(f"Rate for {item}:", min_value=0.0, value=float(current_rate_val), step=1.0, key=f"r_in_{item}")
+                    val = st.session_state.mandi_rates.get(item, 0.0)
+                    updated_rates[item] = st.number_input(f"Rate for {item}:", min_value=0.0, value=float(val), step=1.0, key=f"r_{item}")
+                if st.form_submit_button("Save Rates 💾"):
+                    for item, r_val in updated_rates.items(): st.session_state.mandi_rates[item] = r_val
+                    try:
+                        res = requests.post(SCRIPT_URL, data=json.dumps({"action": "update_rates", "Date": formatted_date, "rates": updated_rates}))
+                        st.success("✅ Rates Saved!") if res.status_code == 200 else st.warning("⚠️ Local save hua.")
+                    except Exception:
+                        st.error("❌ Error!")
+
+        with tab4:
+            st.subheader("💵 All Mess Bills")
+            if filtered_df.empty:
+                st.info("No bills available.")
+            else:
+                filtered_df["Qty"] = pd.to_numeric(filtered_df["Qty"], errors='coerce').fillna(0)
+                filtered_df["Rate"] = filtered_df["Item"].map(st.session_state.mandi_rates).fillna(0.0)
+                filtered_df["Total"] = filtered_df["Qty"] * filtered_df["Rate"]
                 
-                save_rates = st.form_submit_button("Save & Update Rates 💾")
-                if save_rates:
-                    for item, r_val in updated_rates.items():
-                        st.session_state.mandi_rates[item] = r_val
-                    payload = {
-                        "action": "update_rates"
+                st.write("### Summary")
+                st.dataframe(filtered_df.groupby("Mess")["Total"].sum().reset_index())
+                st.write("### Details")
+                sel_mess = st.selectbox("Select Mess:", list(name_mapping.values()))
+                m_det = filtered_df[filtered_df["Mess"] == sel_mess][["Item", "Qty", "Rate", "Total"]].reset_index(drop=True)
+                st.dataframe(m_det)
+                st.metric(label="Total Bill", value=f"₹{m_det['Total'].sum():,.2f}")
