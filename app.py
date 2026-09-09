@@ -20,7 +20,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxbbUBdxj__qToZfF33nT2E3E464K9i3v6S9vDSaxLx4ll8nwNrY8gDaDQqN2sfJbQ2/exec"
+SCRIPT_URL = "https://google.com"
 
 st.markdown('<div class="shop-header"><h1>🚩 ANNAPURNA VEGETABLE SHOP</h1><p>Mess Supply System</p></div>', unsafe_allow_html=True)
 
@@ -134,7 +134,7 @@ else:
                         else: st.error("⚠️ Error!")
                     except Exception: st.error("❌ Error!")
 
-        # TAB 3: Particular Mess Rates and Quantity updates
+        # TAB 3: Particular Mess Rates and Quantity updates (Re-indented & Fixed)
         with tab3:
             st.subheader("💰 Particular Mess Ka Rate Aur Qty Update Karein")
             mess_list = list(name_mapping.values())
@@ -153,8 +153,10 @@ else:
                     for idx, row in mess_specific_df.iterrows():
                         item_name = row["Item"]
                         default_qty = float(row["Qty"])
-                        try: default_rate = float(row.get("Rate", 0.0))
-                        except: default_rate = 0.0
+                        try:
+                            default_rate = float(row.get("Rate", 0.0))
+                        except Exception:
+                            default_rate = 0.0
                         
                         st.markdown(f"##### 🥦 {item_name}")
                         col1, col2 = st.columns(2)
@@ -177,8 +179,10 @@ else:
                             if res.status_code == 200:
                                 st.success(f"✅ Success: Only {selected_edit_mess} ka Bill aur Qty update ho gaya!")
                                 st.rerun()
-                            else: st.warning("⚠️ Local screen par badla, par server error mila.")
-                        except Exception: st.error("❌ Connection Error!")
+                            else:
+                                st.warning("⚠️ Server error! Data save nahi hua.")
+                        except Exception:
+                            st.error("❌ Connection Error!")
 
         # TAB 4: Bills, Monthly Summary & Custom Branded CSV Download
         with tab4:
@@ -190,5 +194,3 @@ else:
                 current_month = formatted_date[:7]
                 working_df = df[df["Month_Year"] == current_month].reset_index(drop=True)
             
-            if working_df.empty: st.info("No bills available for selected period.")
-            else:
