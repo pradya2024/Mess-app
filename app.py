@@ -46,6 +46,7 @@ except Exception:
     available_items = ["Aloo", "Tamatar", "Pyaj"]
     df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
 
+# बेस आइटम्स के लिए लोकल सेशन रेट्स को सिंक करना
 for item in available_items:
     if item not in st.session_state.mandi_rates: st.session_state.mandi_rates[item] = 0.0
 
@@ -96,9 +97,9 @@ else:
         
         if not df.empty and "Date" in df.columns:
             def to_clean_date(val):
-                try: return pd.to_datetime(str(val).strip()).date() + timedelta(days=1)
+                try: return pd.to_datetime(str(val).strip()).date()
                 except Exception:
-                    try: return datetime.strptime(str(val).strip()[:10], "%Y-%m-%d").date() + timedelta(days=1)
+                    try: return datetime.strptime(str(val).strip()[:10], "%Y-%m-%d").date()
                     except Exception: return None
             df["Parsed_Date"] = df["Date"].apply(to_clean_date)
             filtered_df = df[df["Parsed_Date"] == selected_date].reset_index(drop=True)
@@ -134,7 +135,7 @@ else:
                         else: st.error("⚠️ Error!")
                     except Exception: st.error("❌ Error!")
 
-        # TAB 3: Particular Mess Rates and Quantity updates (Re-indented & Fixed)
+        # TAB 3: Particular Mess Rates and Quantity updates
         with tab3:
             st.subheader("💰 Particular Mess Ka Rate Aur Qty Update Karein")
             mess_list = list(name_mapping.values())
@@ -153,10 +154,13 @@ else:
                     for idx, row in mess_specific_df.iterrows():
                         item_name = row["Item"]
                         default_qty = float(row["Qty"])
-                        try:
-                            default_rate = float(row.get("Rate", 0.0))
-                        except Exception:
-                            default_rate = 0.0
+                        try: default_rate = float(row.get("Rate", 0.0))
+                        except Exception: default_rate = 0.0
+                        
+                        # अगर डेटाबेस में रेट 0 है, तो सेशन स्टेट का चेक लगाएं
+                        if default_rate == 0.0:
+                            clean_item_key = item_name.split(" (")[0] # Unit ब्रैकेट हटाने के लिए
+                            default_rate = st.session_state.mandi_rates.get(clean_item_key, 0.0)
                         
                         st.markdown(f"##### 🥦 {item_name}")
                         col1, col2 = st.columns(2)
@@ -167,6 +171,11 @@ else:
                         st.markdown("---")
                     
                     if st.form_submit_button("Update & Save Data 💾"):
+                        # लोकल ऐप सेशन में रेट्स बैकअप को सेव करना
+                        for item, r_val in updated_rates.items():
+                            clean_item_key = item.split(" (")[0]
+                            st.session_state.mandi_rates[clean_item_key] = r_val
+                        
                         payload = {
                             "action": "update_mess_data",
                             "Date": formatted_date,
@@ -179,18 +188,4 @@ else:
                             if res.status_code == 200:
                                 st.success(f"✅ Success: Only {selected_edit_mess} ka Bill aur Qty update ho gaya!")
                                 st.rerun()
-                            else:
-                                st.warning("⚠️ Server error! Data save nahi hua.")
-                        except Exception:
-                            st.error("❌ Connection Error!")
-
-        # TAB 4: Bills, Monthly Summary & Custom Branded CSV Download
-        with tab4:
-            st.subheader("💵 All Mess Bills & Invoices")
-            view_mode = st.radio("View Mode:", ["Daily Bill", "Monthly Summary"])
-            
-            working_df = filtered_df.copy()
-            if view_mode == "Monthly Summary" and not df.empty:
-                current_month = formatted_date[:7]
-                working_df = df[df["Month_Year"] == current_month].reset_index(drop=True)
-            
+                            else: st.warning("⚠️ Local save hua, par sheet sync me thodi deri hai.")
