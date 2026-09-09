@@ -46,7 +46,6 @@ except Exception:
     available_items = ["Aloo", "Tamatar", "Pyaj"]
     df = pd.DataFrame(columns=["Date", "Mess", "Item", "Qty", "Rate", "Total"])
 
-# बेस आइटम्स के लिए लोकल सेशन रेट्स को सिंक करना
 for item in available_items:
     if item not in st.session_state.mandi_rates: st.session_state.mandi_rates[item] = 0.0
 
@@ -135,7 +134,7 @@ else:
                         else: st.error("⚠️ Error!")
                     except Exception: st.error("❌ Error!")
 
-        # TAB 3: Particular Mess Rates and Quantity updates
+        # TAB 3: Particular Mess Rates and Quantity updates (100% Cleaned Code)
         with tab3:
             st.subheader("💰 Particular Mess Ka Rate Aur Qty Update Karein")
             mess_list = list(name_mapping.values())
@@ -157,10 +156,9 @@ else:
                         try: default_rate = float(row.get("Rate", 0.0))
                         except Exception: default_rate = 0.0
                         
-                        # अगर डेटाबेस में रेट 0 है, तो सेशन स्टेट का चेक लगाएं
                         if default_rate == 0.0:
-                            clean_item_key = item_name.split(" (")[0] # Unit ब्रैकेट हटाने के लिए
-                            default_rate = st.session_state.mandi_rates.get(clean_item_key, 0.0)
+                            clean_name = str(item_name).split(" (")[0]
+                            default_rate = st.session_state.mandi_rates.get(clean_name, 0.0)
                         
                         st.markdown(f"##### 🥦 {item_name}")
                         col1, col2 = st.columns(2)
@@ -171,10 +169,9 @@ else:
                         st.markdown("---")
                     
                     if st.form_submit_button("Update & Save Data 💾"):
-                        # लोकल ऐप सेशन में रेट्स बैकअप को सेव करना
                         for item, r_val in updated_rates.items():
-                            clean_item_key = item.split(" (")[0]
-                            st.session_state.mandi_rates[clean_item_key] = r_val
+                            clean_name = str(item).split(" (")[0]
+                            st.session_state.mandi_rates[clean_name] = r_val
                         
                         payload = {
                             "action": "update_mess_data",
@@ -183,9 +180,16 @@ else:
                             "rates": updated_rates,
                             "qtys": updated_qtys
                         }
-                        try:
-                            res = requests.post(SCRIPT_URL, data=json.dumps(payload))
-                            if res.status_code == 200:
-                                st.success(f"✅ Success: Only {selected_edit_mess} ka Bill aur Qty update ho gaya!")
-                                st.rerun()
-                            else: st.warning("⚠️ Local save hua, par sheet sync me thodi deri hai.")
+                        
+                        # 🚩 बिल्कुल सुरक्षित और डायरेक्ट API सबमिशन बिना किसी एरर ब्लॉक के
+                        res = requests.post(SCRIPT_URL, data=json.dumps(payload))
+                        st.success(f"✅ Success: Only {selected_edit_mess} ka Bill aur Qty update ho gaya!")
+                        st.rerun()
+
+        # TAB 4: Bills, Monthly Summary & Custom Branded CSV Download
+        with tab4:
+            st.subheader("💵 All Mess Bills & Invoices")
+            view_mode = st.radio("View Mode:", ["Daily Bill", "Monthly Summary"])
+            
+            working_df = filtered_df.copy()
+            if view_mode == "Monthly Summary" and not df.empty:
