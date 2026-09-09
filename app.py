@@ -66,6 +66,7 @@ else:
         st.session_state.username = ""
         st.rerun()
 
+    # ---- 🟢 MESS MANAGER SCREEN ----
     if st.session_state.username != "admin":
         st.subheader("📋 New Demand Form")
         current_mess = name_mapping[st.session_state.username]
@@ -76,9 +77,15 @@ else:
                 payload = {"action": "submit_demand", "Date": datetime.now().strftime("%Y-%m-%d"), "Mess": current_mess, "Item": item, "Qty": qty, "Rate": 0, "Total": 0}
                 try:
                     res = requests.post(SCRIPT_URL, data=json.dumps(payload))
-                    st.success("✅ Demand Record Ho Gayi!") if res.status_code == 200 else st.error("⚠️ Server Error!")
+                    if res.status_code == 200:
+                        st.success("✅ Demand Record Ho Gayi!")
+                        st.balloons()
+                    else:
+                        st.error("⚠️ Server Error! Status Code: " + str(res.status_code))
                 except Exception:
                     st.error("❌ Connection Error!")
+                    
+    # ---- 📊 ADMIN SCREEN ----
     else:
         selected_date = st.date_input("Select Date:", value=date.today())
         formatted_date = selected_date.strftime("%Y-%m-%d")
@@ -114,7 +121,11 @@ else:
                 if st.form_submit_button("Add Item ➕") and new_item:
                     try:
                         res = requests.post(SCRIPT_URL, data=json.dumps({"action": "add_item", "item_name": new_item}))
-                        st.success("✅ Jodh diya gaya!") if res.status_code == 200 else st.error("⚠️ Error!")
+                        if res.status_code == 200:
+                            st.success("✅ Jodh diya gaya!")
+                            st.rerun()
+                        else:
+                            st.error("⚠️ Error!")
                     except Exception:
                         st.error("❌ Error!")
 
@@ -129,7 +140,10 @@ else:
                     for item, r_val in updated_rates.items(): st.session_state.mandi_rates[item] = r_val
                     try:
                         res = requests.post(SCRIPT_URL, data=json.dumps({"action": "update_rates", "Date": formatted_date, "rates": updated_rates}))
-                        st.success("✅ Rates Saved!") if res.status_code == 200 else st.warning("⚠️ Local save hua.")
+                        if res.status_code == 200:
+                            st.success("✅ Rates Saved!")
+                        else:
+                            st.warning("⚠️ Local save hua.")
                     except Exception:
                         st.error("❌ Error!")
 
