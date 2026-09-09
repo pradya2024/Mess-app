@@ -94,16 +94,17 @@ else:
         selected_date = st.date_input("Select Date:", value=today_ist)
         formatted_date = selected_date.strftime("%Y-%m-%d")
         
+        # 🚩 बिना किसी टाइम शिफ्टिंग के बिल्कुल सीधा और सटीक डेट मैचिंग लॉजिक
         if not df.empty and "Date" in df.columns:
             def to_clean_date(val):
-                try: return pd.to_datetime(str(val).strip()).date()
-                except Exception:
-                    try: return datetime.strptime(str(val).strip()[:10], "%Y-%m-%d").date()
-                    except Exception: return None
-            df["Parsed_Date"] = df["Date"].apply(to_clean_date)
-            filtered_df = df[df["Parsed_Date"] == selected_date].reset_index(drop=True)
-            df["Month_Year"] = df["Date"].astype(str).str.slice(0, 7)
-        else: filtered_df = df.copy()
+                try: 
+                    return str(val).strip()[:10]
+                except Exception: 
+                    return ""
+            df["Date_Clean"] = df["Date"].apply(to_clean_date)
+            filtered_df = df[df["Date_Clean"] == formatted_date].reset_index(drop=True)
+        else: 
+            filtered_df = df.copy()
 
         tab1, tab2, tab3, tab4 = st.tabs(["🛒 Packing List", "➕ Add Sabji", "💰 Edit Rates & Mess Qty", "💵 Mess Bills & Print"])
         
@@ -157,8 +158,8 @@ else:
                         except Exception: default_rate = 0.0
                         
                         if default_rate == 0.0:
-                            clean_name = str(item_name).split(" (")[0]
-                            default_rate = st.session_state.mandi_rates.get(clean_name, 0.0)
+                            clean_key = str(item_name).split(" (")[0]
+                            default_rate = st.session_state.mandi_rates.get(clean_key, 0.0)
                         
                         st.markdown(f"##### 🥦 {item_name}")
                         col1, col2 = st.columns(2)
@@ -170,8 +171,8 @@ else:
                     
                     if st.form_submit_button("Update & Save Data 💾"):
                         for item, r_val in updated_rates.items():
-                            clean_name = str(item).split(" (")[0]
-                            st.session_state.mandi_rates[clean_name] = r_val
+                            clean_key = str(item).split(" (")[0]
+                            st.session_state.mandi_rates[clean_key] = r_val
                         
                         payload = {
                             "action": "update_mess_data",
@@ -185,7 +186,7 @@ else:
                         st.balloons()
                         st.rerun()
 
-        # TAB 4: Bills & Reports (100% Indentation Error Proof)
+        # TAB 4: Bills & Reports (100% फिक्स और एरर-प्रूफ लाइव कैलकुलेशन)
         with tab4:
             st.subheader("💵 All Mess Bills & Invoices")
             view_mode = st.radio("View Mode:", ["Daily Bill", "Monthly Summary"])
@@ -193,3 +194,5 @@ else:
             working_df = filtered_df.copy()
             if view_mode == "Monthly Summary" and not df.empty:
                 current_month = formatted_date[:7]
+                working_df = df[df["Date"].astype(str).str.contains(current_month, na=False)].reset_index(drop=True)
+            
