@@ -134,14 +134,12 @@ else:
                         else: st.error("⚠️ Error!")
                     except Exception: st.error("❌ Error!")
 
-        # 🚩 TAB 3: PARTICULAR MESS SELECT KARKE RATES AUR QUANTITY BADALNA
+        # TAB 3: Particular Mess Rates and Quantity updates
         with tab3:
             st.subheader("💰 Particular Mess Ka Rate Aur Qty Update Karein")
-            
             mess_list = list(name_mapping.values())
             selected_edit_mess = st.selectbox("Kis Mess ka details badalna chahte hain?", mess_list, key="edit_mess_select")
             
-            # Chune hue mess ka data nikalna
             mess_specific_df = filtered_df[filtered_df["Mess"] == selected_edit_mess].reset_index(drop=True)
             
             if mess_specific_df.empty:
@@ -155,12 +153,8 @@ else:
                     for idx, row in mess_specific_df.iterrows():
                         item_name = row["Item"]
                         default_qty = float(row["Qty"])
-                        
-                        # Pehle se save rate nikalna
                         try: default_rate = float(row.get("Rate", 0.0))
                         except: default_rate = 0.0
-                        if default_rate == 0.0:
-                            default_rate = st.session_state.mandi_rates.get(item_name.split(" ")[0], 0.0)
                         
                         st.markdown(f"##### 🥦 {item_name}")
                         col1, col2 = st.columns(2)
@@ -171,12 +165,6 @@ else:
                         st.markdown("---")
                     
                     if st.form_submit_button("Update & Save Data 💾"):
-                        # Local session state rates update karein
-                        for item, r_val in updated_rates.items():
-                            base_item = item.split(" ")[0]
-                            st.session_state.mandi_rates[base_item] = r_val
-                        
-                        # Global updates spreadsheet endpoint par raw payload push karein
                         payload = {
                             "action": "update_mess_data",
                             "Date": formatted_date,
@@ -190,3 +178,17 @@ else:
                                 st.success(f"✅ Success: Only {selected_edit_mess} ka Bill aur Qty update ho gaya!")
                                 st.rerun()
                             else: st.warning("⚠️ Local screen par badla, par server error mila.")
+                        except Exception: st.error("❌ Connection Error!")
+
+        # TAB 4: Bills, Monthly Summary & Custom Branded CSV Download
+        with tab4:
+            st.subheader("💵 All Mess Bills & Invoices")
+            view_mode = st.radio("View Mode:", ["Daily Bill", "Monthly Summary"])
+            
+            working_df = filtered_df.copy()
+            if view_mode == "Monthly Summary" and not df.empty:
+                current_month = formatted_date[:7]
+                working_df = df[df["Month_Year"] == current_month].reset_index(drop=True)
+            
+            if working_df.empty: st.info("No bills available for selected period.")
+            else:
