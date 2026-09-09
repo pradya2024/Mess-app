@@ -33,7 +33,7 @@ if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'username' not in st.session_state: st.session_state.username = ""
 if 'mandi_rates' not in st.session_state: st.session_state.mandi_rates = {}
 
-# 🚩 भारतीय समय (IST) निकालने का फुलप्रूफ तरीका (UTC + 5:30 Hours)
+# भारतीय समय (IST) निकालने का सही तरीका
 def get_ist_now():
     utc_now = datetime.utcnow()
     ist_now = utc_now + timedelta(hours=5, minutes=30)
@@ -80,7 +80,7 @@ else:
             item = st.selectbox("Select Item:", available_items)
             qty = st.number_input("Quantity:", min_value=1.0, step=1.0)
             if st.form_submit_button("Submit Demand 🚀"):
-                # 🚩 FIX: अब सबमिट करते समय IST (भारतीय समय) की शुद्ध तारीख ही डेटाबेस में जाएगी
+                # भारत के करंट दिन की तारीख भेजना
                 current_ist_date = get_ist_now().strftime("%Y-%m-%d")
                 payload = {"action": "submit_demand", "Date": current_ist_date, "Mess": current_mess, "Item": item, "Qty": qty, "Rate": 0, "Total": 0}
                 try:
@@ -95,19 +95,20 @@ else:
                     
     # ---- 📊 ADMIN SCREEN ----
     else:
-        # डिफ़ॉल्ट रूप से आज की भारतीय तारीख चुनेगा
         today_ist = get_ist_now().date()
         selected_date = st.date_input("Select Date:", value=today_ist)
         
-        # 🚩 स्ट्रिंग पार्सर: गूगल शीट की तारीखों को क्लीन करके मैच करना
+        # 🚩 फ़िक्स लॉजिक: शीट की तारीख अगर पीछे है, तो उसे +1 दिन आगे शिफ्ट करके देखना
         if not df.empty and "Date" in df.columns:
             def to_clean_date(val):
                 try:
-                    # ISO या टाइमस्टैम्प से सिर्फ YYYY-MM-DD निकालना
-                    return pd.to_datetime(str(val).strip()).date()
+                    parsed_date = pd.to_datetime(str(val).strip()).date()
+                    # अगर डेटाबेस में पुरानी तारीख (कल की) दिखा रहा है, तो टाइमज़ोन सुधार के लिए 1 दिन जोड़ें
+                    return parsed_date + timedelta(days=1)
                 except Exception:
                     try:
-                        return datetime.strptime(str(val).strip()[:10], "%Y-%m-%d").date()
+                        parsed_date = datetime.strptime(str(val).strip()[:10], "%Y-%m-%d").date()
+                        return parsed_date + timedelta(days=1)
                     except Exception:
                         return None
 
@@ -116,15 +117,12 @@ else:
         else:
             filtered_df = df.copy()
 
-        if filtered_df.empty and not df.empty:
-            st.info("💡 Agar aaj data nahi dikh raha, toh calendar me ek din peeche ya aage ki date chun kar dekhein (Timezone adjustment ke liye).")
-
         tab1, tab2, tab3, tab4 = st.tabs(["🛒 Packing List", "➕ Add Sabji", "💰 Mandi Rates", "💵 Mess Bills"])
         
         with tab1:
             st.subheader("🛒 Mandi Purchase List")
             if filtered_df.empty:
-                st.info("No demands found for this date.")
+                st.info("No demands found for this date. (Try changing the date to check older items)")
             else:
                 filtered_df["Qty"] = pd.to_numeric(filtered_df["Qty"], errors='coerce').fillna(0)
                 try:
