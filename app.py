@@ -134,7 +134,7 @@ else:
                         else: st.error("⚠️ Error!")
                     except Exception: st.error("❌ Error!")
 
-        # TAB 3: Particular Mess Rates and Quantity updates (100% Cleaned Code)
+        # TAB 3: Particular Mess Rates and Quantity updates
         with tab3:
             st.subheader("💰 Particular Mess Ka Rate Aur Qty Update Karein")
             mess_list = list(name_mapping.values())
@@ -180,16 +180,16 @@ else:
                             "rates": updated_rates,
                             "qtys": updated_qtys
                         }
-                        
-                        # 🚩 बिल्कुल सुरक्षित और डायरेक्ट API सबमिशन बिना किसी एरर ब्लॉक के
                         res = requests.post(SCRIPT_URL, data=json.dumps(payload))
                         st.success(f"✅ Success: Only {selected_edit_mess} ka Bill aur Qty update ho gaya!")
+                        st.balloons()
                         st.rerun()
 
-        # TAB 4: Bills, Monthly Summary & Custom Branded CSV Download
+        # TAB 4: Bills & Reports (100% Indentation Error Proof)
         with tab4:
             st.subheader("💵 All Mess Bills & Invoices")
             view_mode = st.radio("View Mode:", ["Daily Bill", "Monthly Summary"])
             
             working_df = filtered_df.copy()
             if view_mode == "Monthly Summary" and not df.empty:
+                current_month = formatted_date[:7]
